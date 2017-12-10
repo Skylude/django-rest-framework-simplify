@@ -28,7 +28,6 @@ jobs:
           name: pyodbc dependency
           command: |
             sudo apt-get install software-properties-common python-software-properties
-            sudo add-apt-repository ppa:ubuntu-toolchain-r/test --yes
             sudo apt-get update
             sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3
             tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
