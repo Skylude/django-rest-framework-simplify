@@ -1,0 +1,25 @@
+class DjangoErrorMessages:
+    FIELD_CANNOT_BE_BLANK = 'This field cannot be blank.'
+
+class ErrorMessages:
+    DOES_NOT_EXIST = '{0} with ID {1} does not exist'
+    INVALID_REQUEST = 'Invalid request'
+    DELETE_NOT_SUPPORTED = 'DELETE method for {0} not supported'
+    DELETE_SUB_NOT_SUPPORTED = 'DELETE method for sub resource {0} not supported'
+    GET_LIST_NOT_SUPPORTED = 'GET method for {0} without primary key not supported'
+    GET_LIST_SUB_NOT_SUPPORTED = 'GET method for sub resource {0} not supported'
+    GET_SUB_NOT_SUPPORTED = 'GET sub method for sub resource {0} not supported'
+    GET_NOT_SUPPORTED = 'GET method for {0} not supported'
+    PUT_NOT_SUPPORTED = 'PUT method for {0} not supported'
+    POST_NOT_SUPPORTED = 'POST method for {0} not supported'
+    POST_SUB_NOT_SUPPORTED = 'POST method for sub resource {0} not supported'
+    POST_SUB_WITH_ID_AND_NO_LINKING_CLASS = 'POST method for sub resource {0} misconfigured'
+    DELETE_LINKED_OBJ = 'DELETE cannot be performed {0} objects exist'
+    NO_DATA_OR_DATA_NOT_DICT = 'Received no data to parse or data not a dictionary'
+    UPDATE_WITH_NON_EXISTENT_ID = 'Cannot update object -- Does not exist'
+    FIELD_INFO_MISSING = 'Cannot get meta data about field or validation method does not exist'
+    RELATED_ITEM_DOES_NOT_EXIST = 'Related item does not exist: {0}'
+    PARSEABLE_RELATED_FIELD_PARSE_FAILED = 'Could not parse related field exception was: {0}'
+    TOO_DEEP = 'You shall not pass -- attempting to parse too many levels and Gandalf will not allow it'
+    COULD_NOT_PARSE_DATE_FIELD = 'Date field could not be parsed for field: {0}'
+

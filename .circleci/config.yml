@@ -1,0 +1,83 @@
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.1
+        environment:
+        - PG_HOST=localhost
+        - PG_USER=ubuntu
+      - image: circleci/postgres:9.6
+        environment:
+        - POSTGRES_USER=ubuntu
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - run:
+          name: Wait for db
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+
+      # need to install pyodbc dependency
+      - run:
+          name: pyodbc dependency
+          command: |
+            sudo apt-get install unixodbc unixodbc-dev
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "requirements.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+
+      # create posgres user with superuser permissions
+      - run:
+          name: setup postgres users
+          command: |
+            sudo apt update
+            sudo apt install postgresql-client
+            sudo -u root psql -p 5432 -h 127.0.0.1 -U postgres -c "CREATE USER test WITH PASSWORD 'test';"
+            sudo -u root psql -p 5432 -h 127.0.0.1 -U postgres -c "ALTER USER test WITH superuser;"
+
+      # run tests!
+      - run:
+          name: run tests
+          command: |
+            mkdir xunit
+            . venv/bin/activate
+            python manage.py test --with-xunit --xunit-file=./xunit/xunit.xml
+
+      # store test results
+      - store_test_results:
+          path: ./xunit
+
+      # store xml test artifacts
+      - store_artifacts:
+          path: ./xunit
+
+      # deploy to pypi
+      - deploy:
+          name: PyPi Deploy
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              sudo pip install twine
+              python setup.py sdist
+              twine upload --username "${PYPI_USERNAME}" --password "${PYPI_PASSWORD}" dist/*
+            fi

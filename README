@@ -1,0 +1,5 @@
+Django Rest Framework Simplify
+
+This module was created in order to simplify Django Rest Framework and to be able to genericize the most used views.
+It prevents redundant code and simplifies the views. It also adds serializer capability as well as including related
+models and additional properties.
