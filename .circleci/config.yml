@@ -29,7 +29,7 @@ jobs:
           command: |
             sudo apt-get install software-properties-common python-software-properties
             sudo apt-get update
-            sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3
+            sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3 freetds-dev
             tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
             sed -i 's/uname \-p/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh
             ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
