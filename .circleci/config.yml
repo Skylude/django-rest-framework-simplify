@@ -14,7 +14,7 @@ jobs:
         environment:
         - POSTGRES_USER=ubuntu
 
-    working_directory: ~/repo
+    working_directory: ~/django-rest-framework-simplify
 
     steps:
       - checkout
@@ -42,6 +42,14 @@ jobs:
             python3 -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
+            sudo add-apt-repository ppa:ubuntu-toolchain-r/test --yes
+            sudo apt-get update
+            sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3
+            tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
+            ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
+            cd /tmp/$(ls /tmp | grep unixODBC)/unixODBC-2.3.1&& sudo make install
+            cd ~/rd-api/msodbcsql-13.0.0.0&& sudo ./install.sh install --accept-license
+            sudo ln -s /usr/lib64/libodbcinst.so.2 /lib/x86_64-linux-gnu/libodbcinst.so.2
       - save_cache:
           paths:
             - ./venv
