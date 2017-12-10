@@ -31,10 +31,10 @@ jobs:
             sudo apt-get update
             sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3
             tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
-            sudo sed -i 's/uname \-a/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh
-            ~/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
+            sed -i 's/uname \-a/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh
+            ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
             cd /tmp/$(ls /tmp | grep unixODBC)/unixODBC-2.3.1&& sudo make install
-            cd ~/rd-api/msodbcsql-13.0.0.0&& sudo ./install.sh install --accept-license
+            cd ~/django-rest-framework-simplify/msodbcsql-13.0.0.0&& sudo ./install.sh install --accept-license
             sudo ln -s /usr/lib64/libodbcinst.so.2 /lib/x86_64-linux-gnu/libodbcinst.so.2
 
       # Download and cache dependencies
