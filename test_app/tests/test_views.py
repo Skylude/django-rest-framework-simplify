@@ -520,3 +520,19 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
+
+
+class OneToOneTests(unittest.TestCase):
+
+    api_client = APIClient()
+
+    def test_get_one_to_one(self):
+        # arrange
+        oto = DataGenerator.set_up_ont_to_one_class()
+        url = '/oneToOne/{0}'.format(oto.alternative_id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(result.data['alternativeId'], oto.alternative_id)

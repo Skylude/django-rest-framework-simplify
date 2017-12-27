@@ -2,7 +2,7 @@ from django.conf import settings
 
 from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyView, SimplifyEmailTemplateView
 
-from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass
+from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass
 from test_app import forms, email_templates
 
 
@@ -103,3 +103,8 @@ class SendEmailHandler(SimplifyEmailTemplateView):
         # add items to kwargs
         kwargs['templates'] = email_templates
         super(SendEmailHandler, self).__init__(*args, **kwargs)
+
+
+class OneToOneHandler(SimplifyView):
+    def __init__(self):
+        super().__init__(OneToOneClass, supported_methods=['GET'])

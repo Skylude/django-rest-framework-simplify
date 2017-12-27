@@ -76,3 +76,7 @@ class MetaDataClass(SimplifyModel):
 class EncryptedClass(SimplifyModel):
     id = models.AutoField(primary_key=True)
     encrypted_val = SimplifyEncryptedCharField(max_length=256, display_chars=-4)
+
+
+class OneToOneClass(SimplifyModel):
+    alternative_id = models.IntegerField(primary_key=True)
