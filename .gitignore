@@ -1,6 +1,6 @@
 *.pyc
 *.cpython
-.idea
+.idea/*
 .DS_Store
 
 output/*
