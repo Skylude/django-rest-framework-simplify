@@ -54,3 +54,9 @@ class DataGenerator:
         meta_data_class.save()
         return meta_data_class
 
+    @staticmethod
+    def set_up_ont_to_one_class():
+        oto = OneToOneClass(alternative_id=1)
+        oto.save()
+        return oto
+

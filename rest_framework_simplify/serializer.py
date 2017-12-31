@@ -154,7 +154,10 @@ class SQLEngineSerializer:
             json_data_str = serializers.serialize('json', [obj])
             plain_dict = json.loads(json_data_str)
             model_dict = plain_dict[0]['fields']
-            model_dict['id'] = plain_dict[0]['pk']
+            if obj._meta.pk.attname != 'id':
+                model_dict[obj._meta.pk.attname] = plain_dict[0]['pk']
+            else:
+                model_dict['id'] = plain_dict[0]['pk']
             cls = type(obj)
 
 
