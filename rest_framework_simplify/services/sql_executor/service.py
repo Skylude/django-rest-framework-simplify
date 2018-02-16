@@ -117,6 +117,8 @@ class SQLServerExecutorService(SQLExecutorService):
                     command += str(param)
                 elif type(param) == datetime.date:
                     command += "'" + param.strftime('%Y-%m-%d') + "'"
+                elif type(param) == datetime.datetime:
+                    command += "'" + param.strftime('%x %H:%M:%S') + "'"
                 elif type(param) == bool:
                     command += str(int(param))
                 if index < (len(sp_params) - 1):
