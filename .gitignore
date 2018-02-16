@@ -1,6 +1,8 @@
 *.pyc
+*.cpython-36.pyc
 *.cpython
 .idea/*
 .DS_Store
+__pycache__/
 
 output/*

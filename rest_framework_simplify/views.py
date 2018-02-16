@@ -1,13 +1,12 @@
-import ast
 import datetime
-import json
-import re
 import dateutil.parser
+import logging
 
 from decimal import Decimal
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.fields.related import ForeignKey, OneToOneField
+from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -52,12 +51,10 @@ class SimplifyView(APIView):
             if 'DELETE' not in self.supported_methods:
                 return self.create_response(error_message=ErrorMessages.DELETE_NOT_SUPPORTED.format(self.model.__name__))
 
-
-
         try:
             obj = self.model.objects.using(self.read_db).get(pk=pk)
         except self.DoesNotExist:
-            return self.create_response(error_message=ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+            raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
         # check query param to only delete linker
         delete_link_only = request.query_params.get('deleteLinkOnly', False)
@@ -106,7 +103,7 @@ class SimplifyView(APIView):
             try:
                 obj = self.model.objects.using(self.read_db).get(pk=pk)
             except self.DoesNotExist:
-                return self.create_response(error_message=ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+                raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
         else:
             # we could be a sub resource so we need to check if a parent_resource was passed in
@@ -280,6 +277,27 @@ class SimplifyView(APIView):
         return self.create_response(body=obj, serialize=True, include=include, exclude=excludes, fields=fields,
                                     count=total_items, using_cache=False, cache_key=cache_key)
 
+    def handle_exception(self, exc):
+        status_code = None
+        if isinstance(exc, (exceptions.NotAuthenticated,
+                            exceptions.AuthenticationFailed)):
+            status_code = status.HTTP_403_FORBIDDEN
+        error_message = exc.args[0]
+
+        # log error
+        logger = logging.getLogger('django.request')
+        extra_logging = {
+            'rq_query_params': self.request.query_params,
+            'rq_data': self.request.data,
+            'rq_method': self.request.method,
+            'rq_path': self.request.path,
+            'rs_status_code': status_code
+        }
+        logger.error(error_message, extra=extra_logging)
+
+
+        return self.create_response(error_message=error_message, response_status=status_code)
+
     def post(self, request, parent_resource=None, parent_pk=None):
         # check we are authorized to POST
         if not parent_resource and not parent_pk and 'POST' not in self.supported_methods:
@@ -319,21 +337,11 @@ class SimplifyView(APIView):
 
         # occasionally we may need to transform the request to fit the model -- this is generally an unrestful call
         if hasattr(self.model, 'transform_request'):
-            try:
-                transformed_request = self.model.transform_request(request)
-            except Exception as e:
-                # args[0] is the message passed along in the exception
-                return self.create_response(error_message=e.args[0])
-            try:
-                obj = self.model.parse(transformed_request, existing_id=id, reference_fields=reference_fields)
-            except ParseException as ex:
-                return self.create_response(error_message=ex.args[0], response_status=status.HTTP_400_BAD_REQUEST)
+            transformed_request = self.model.transform_request(request)
+            obj = self.model.parse(transformed_request, existing_id=id, reference_fields=reference_fields)
         else:
             # check for reference fields to parse them into the model
-            try:
-                obj = self.model.parse(request.data, existing_id=id, reference_fields=reference_fields)
-            except ParseException as ex:
-                return self.create_response(error_message=ex.args[0], response_status=status.HTTP_400_BAD_REQUEST)
+            obj = self.model.parse(request.data, existing_id=id, reference_fields=reference_fields)
 
         obj.cascade_save(write_db=self.write_db)
 
@@ -376,10 +384,7 @@ class SimplifyView(APIView):
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:
             return self.create_response(error_message=ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
-        try:
-            obj = self.model.parse(request.data, existing_id=pk)
-        except ParseException as ex:
-            return self.create_response(error_message=ex.args[0], response_status=status.HTTP_400_BAD_REQUEST)
+        obj = self.model.parse(request.data, existing_id=pk)
 
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
@@ -471,6 +476,15 @@ class SimplifyStoredProcedureView(APIView):
         INVALID_STORED_PROCEDURE = 'Stored procedure {0} is not defined'
         INVALID_PARAMS = 'Params for stored procedure {0} invalid'
 
+    def handle_exception(self, exc):
+        status_code = status.HTTP_400_BAD_REQUEST
+        if isinstance(exc, (exceptions.NotAuthenticated,
+                            exceptions.AuthenticationFailed)):
+            status_code = status.HTTP_403_FORBIDDEN
+
+        error_message = exc.args[0]
+        return Response({'errorMessage': error_message}, status=status_code)
+
     def post(self, request):
         sp_name = request.data.get('spName', None)
         # get form based on sp_name
@@ -521,6 +535,15 @@ class SimplifyEmailTemplateView(APIView):
         UNABLE_TO_POPULATE_TEMPLATE = 'Unable to populate all the needed fields in {0}. Field: {1}'
         MISSING_SEND_EMAIL_METHOD = 'Missing a send email method'
 
+    def handle_exception(self, exc):
+        status_code = status.HTTP_400_BAD_REQUEST
+        if isinstance(exc, (exceptions.NotAuthenticated,
+                            exceptions.AuthenticationFailed)):
+            status_code = status.HTTP_403_FORBIDDEN
+
+        error_message = exc.args[0]
+        return Response({'errorMessage': error_message}, status=status_code)
+
     def post(self, request):
         template_name = request.data.get('templateName', None)
         # get form based on template_name
@@ -533,11 +556,7 @@ class SimplifyEmailTemplateView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         form = form_cls(request.data)
-
-        try:
-            res = form.send_email()
-        except Exception as ex:
-            return Response({'errorMessage': ex.args[0]}, status=status.HTTP_400_BAD_REQUEST)
+        res = form.send_email()
 
         # may need some type of serialization
         return Response(res, status=status.HTTP_200_OK)
