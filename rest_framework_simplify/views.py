@@ -481,8 +481,19 @@ class SimplifyStoredProcedureView(APIView):
         if isinstance(exc, (exceptions.NotAuthenticated,
                             exceptions.AuthenticationFailed)):
             status_code = status.HTTP_403_FORBIDDEN
-
         error_message = exc.args[0]
+
+        # log error
+        logger = logging.getLogger('django.request')
+        extra_logging = {
+            'rq_query_params': self.request.query_params,
+            'rq_data': self.request.data,
+            'rq_method': self.request.method,
+            'rq_path': self.request.path,
+            'rs_status_code': status_code
+        }
+        logger.error(error_message, extra=extra_logging)
+
         return Response({'errorMessage': error_message}, status=status_code)
 
     def post(self, request):
@@ -540,8 +551,19 @@ class SimplifyEmailTemplateView(APIView):
         if isinstance(exc, (exceptions.NotAuthenticated,
                             exceptions.AuthenticationFailed)):
             status_code = status.HTTP_403_FORBIDDEN
-
         error_message = exc.args[0]
+
+        # log error
+        logger = logging.getLogger('django.request')
+        extra_logging = {
+            'rq_query_params': self.request.query_params,
+            'rq_data': self.request.data,
+            'rq_method': self.request.method,
+            'rq_path': self.request.path,
+            'rs_status_code': status_code
+        }
+        logger.error(error_message, extra=extra_logging)
+
         return Response({'errorMessage': error_message}, status=status_code)
 
     def post(self, request):
