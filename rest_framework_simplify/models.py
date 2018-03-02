@@ -49,7 +49,11 @@ class SimplifyModel(DjangoModel):
 
         # if we didn't receive a dict for parsing return None
         if data is None or type(data) is not dict:
-            raise ParseException(ErrorMessages.NO_DATA_OR_DATA_NOT_DICT)
+            # Django 2.0 changed to use QueryDict, if using 2.0, get the dict object from the QueryDict
+            if hasattr(data, 'dict'):
+                data = data.dict()
+            else:
+                raise ParseException(ErrorMessages.NO_DATA_OR_DATA_NOT_DICT)
 
         # if we have an existing_id we are retrieving the object from the database and updating its fields
         if existing_id:
@@ -198,8 +202,6 @@ class SimplifyModel(DjangoModel):
         return []
 
 
-
-
 class RDDocument(object):
     created = DateTimeField()
     updated = DateTimeField()
@@ -207,7 +209,11 @@ class RDDocument(object):
     @classmethod
     def parse(cls, data, existing_id=None, reference_fields=None):
         if data is None or type(data) is not dict:
-            return None
+            # Django 2.0 changed to use QueryDict, if using 2.0, get the dict object from the QueryDict
+            if hasattr(data, 'dict'):
+                data = data.dict()
+            else:
+                return None
 
         # if we passed in an id it means we are parsing an existing object and updating fields
         if existing_id:
