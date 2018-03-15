@@ -515,12 +515,7 @@ class SimplifyStoredProcedureView(APIView):
 
         # validate the model that was sent in
         if form.is_valid():
-            # call stored procedure
-            sp_service = SQLExecutorService(self.connection_data['server'], self.connection_data['database'],
-                                          self.connection_data['username'], self.connection_data['password'],
-                                          port=self.connection_data['port'], engine=self.connection_data['engine'])
-            sp_params = form.get_params()
-            result = sp_service.call_stored_procedure(sp_name, sp_params)
+            result = form.execute_sp()
             camel_cased_results = Mapper().underscore_to_camelcase(result)
 
             # may need some type of serialization

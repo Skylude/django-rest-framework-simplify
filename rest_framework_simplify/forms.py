@@ -41,6 +41,15 @@ class StoredProcedureForm(forms.Form):
         }
         self.__class__ = self.engine_map.get(self.engine, StoredProcedureForm)
 
+    def execute_sp(self):
+        # call stored procedure
+        sp_service = SQLExecutorService(self.connection_data['server'], self.connection_data['database'],
+                                        self.connection_data['username'], self.connection_data['password'],
+                                        port=self.connection_data['port'], engine=self.engine)
+        sp_params = self.get_params()
+        result = sp_service.call_stored_procedure(self.sp_name, sp_params)
+        return result
+
 
 class PostgresStoredProcedureForm(StoredProcedureForm):
     # method will get params and put form parameters in the correct order that the stored procedure needs
