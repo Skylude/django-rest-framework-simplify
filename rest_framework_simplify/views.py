@@ -463,14 +463,6 @@ class SimplifyStoredProcedureView(APIView):
     def __init__(self, *args, **kwargs):
         super(SimplifyStoredProcedureView, self).__init__(*args, **kwargs)
         self.forms = kwargs.get('forms', None)
-        self.connection_data = {
-            'server': kwargs.get('server', None),
-            'database': kwargs.get('database', None),
-            'username': kwargs.get('username', None),
-            'password': kwargs.get('password', None),
-            'port': kwargs.get('port', None),
-            'engine': kwargs.get('engine', None)
-        }
 
     class ErrorMessages:
         INVALID_STORED_PROCEDURE = 'Stored procedure {0} is not defined'
