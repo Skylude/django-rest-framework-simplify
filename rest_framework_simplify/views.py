@@ -278,7 +278,7 @@ class SimplifyView(APIView):
                                     count=total_items, using_cache=False, cache_key=cache_key)
 
     def handle_exception(self, exc):
-        status_code = None
+        status_code = status.HTTP_400_BAD_REQUEST
         if isinstance(exc, (exceptions.NotAuthenticated,
                             exceptions.AuthenticationFailed)):
             status_code = status.HTTP_403_FORBIDDEN
