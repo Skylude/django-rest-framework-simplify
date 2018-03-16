@@ -289,17 +289,21 @@ class SimplifyView(APIView):
         else:
             query_params = self.request.query_params
 
+        if hasattr(self.request.data, 'dict'):
+            request_data = self.request.data.dict()
+        else:
+            request_data = self.request.data
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
             'rq_query_params': query_params,
-            'rq_data': self.request.data,
+            'rq_data': request_data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
             'rs_status_code': status_code
         }
         logger.error(error_message, extra=extra_logging)
-
 
         return self.create_response(error_message=error_message, response_status=status_code)
 
@@ -485,11 +489,16 @@ class SimplifyStoredProcedureView(APIView):
         else:
             query_params = self.request.query_params
 
+        if hasattr(self.request.data, 'dict'):
+            request_data = self.request.data.dict()
+        else:
+            request_data = self.request.data
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
             'rq_query_params': query_params,
-            'rq_data': self.request.data,
+            'rq_data': request_data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
             'rs_status_code': status_code
@@ -555,11 +564,16 @@ class SimplifyEmailTemplateView(APIView):
         else:
             query_params = self.request.query_params
 
+        if hasattr(self.request.data, 'dict'):
+            request_data = self.request.data.dict()
+        else:
+            request_data = self.request.data
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
             'rq_query_params': query_params,
-            'rq_data': self.request.data,
+            'rq_data': request_data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
             'rs_status_code': status_code
