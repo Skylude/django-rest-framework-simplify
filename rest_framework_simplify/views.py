@@ -284,10 +284,15 @@ class SimplifyView(APIView):
             status_code = status.HTTP_403_FORBIDDEN
         error_message = exc.args[0]
 
+        if hasattr(self.request.query_params, 'dict'):
+            query_params = self.request.query_params.dict()
+        else:
+            query_params = self.request.query_params
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
-            'rq_query_params': self.request.query_params,
+            'rq_query_params': query_params,
             'rq_data': self.request.data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
@@ -475,10 +480,15 @@ class SimplifyStoredProcedureView(APIView):
             status_code = status.HTTP_403_FORBIDDEN
         error_message = exc.args[0]
 
+        if hasattr(self.request.query_params, 'dict'):
+            query_params = self.request.query_params.dict()
+        else:
+            query_params = self.request.query_params
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
-            'rq_query_params': self.request.query_params,
+            'rq_query_params': query_params,
             'rq_data': self.request.data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
@@ -540,10 +550,15 @@ class SimplifyEmailTemplateView(APIView):
             status_code = status.HTTP_403_FORBIDDEN
         error_message = exc.args[0]
 
+        if hasattr(self.request.query_params, 'dict'):
+            query_params = self.request.query_params.dict()
+        else:
+            query_params = self.request.query_params
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
-            'rq_query_params': self.request.query_params,
+            'rq_query_params': query_params,
             'rq_data': self.request.data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
