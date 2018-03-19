@@ -1,6 +1,7 @@
 import datetime
 import dateutil.parser
 import logging
+import traceback
 
 from decimal import Decimal
 from django.core.cache import cache
@@ -282,6 +283,8 @@ class SimplifyView(APIView):
         if isinstance(exc, (exceptions.NotAuthenticated,
                             exceptions.AuthenticationFailed)):
             status_code = status.HTTP_403_FORBIDDEN
+
+        # grab error_message from exception
         error_message = exc.args[0]
 
         if hasattr(self.request.query_params, 'dict'):
@@ -294,6 +297,17 @@ class SimplifyView(APIView):
         else:
             request_data = self.request.data
 
+        # only want the last frame in generator
+        exc_frame = None
+        exc_filename = None
+        exc_lineno = None
+        exc_func = None
+        for frame, lineno in traceback.walk_tb(exc.__traceback__):
+            exc_frame = frame
+            exc_lineno = lineno
+            exc_func = frame.f_code.co_name
+            exc_filename = frame.f_code.co_filename
+
         # log error
         logger = logging.getLogger('django.request')
         extra_logging = {
@@ -301,10 +315,13 @@ class SimplifyView(APIView):
             'rq_data': request_data,
             'rq_method': self.request.method,
             'rq_path': self.request.path,
-            'rs_status_code': status_code
+            'rs_status_code': status_code,
+            'exc_filename': exc_filename,
+            'exc_func': exc_func,
+            'exc_lineno': exc_lineno
         }
-        logger.error(error_message, extra=extra_logging)
 
+        logger.error(error_message, extra=extra_logging)
         return self.create_response(error_message=error_message, response_status=status_code)
 
     def post(self, request, parent_resource=None, parent_pk=None):
