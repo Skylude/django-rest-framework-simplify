@@ -32,7 +32,7 @@ class SimplifyModel(DjangoModel):
         self.encrypted_fields = []
 
     @classmethod
-    def parse(cls, data, existing_id=None, reference_fields=None, current_parse_level=1):
+    def parse(cls, data, existing_id=None, reference_fields=None, current_parse_level=1, request=None):
         """Parses a dictionary into a domain model.
 
         This parser will attempt to convert a dictionary object to the defined model. This is an abstract
@@ -127,7 +127,8 @@ class SimplifyModel(DjangoModel):
                                 # call parse on related_field
                                 try:
                                     related_item = related_cls.parse(field_value, existing_id=related_item_id,
-                                                                     current_parse_level=next_parse_level)
+                                                                     current_parse_level=next_parse_level,
+                                                                     request=request)
                                 # overall parsing failed if we didn't a nested item and we should have
                                 except ParseException as ex:
                                     raise ParseException(ErrorMessages.PARSEABLE_RELATED_FIELD_PARSE_FAILED.format(ex.args[0]))
@@ -158,6 +159,11 @@ class SimplifyModel(DjangoModel):
                         field_value = round(decimal.Decimal(field_value), decimal_places)
                     setattr(obj, field_name, field_value)
 
+        # check if there is request data we want to save
+        if hasattr(obj, 'REQUEST_FIELDS_TO_SAVE'):
+            for request_field_to_save in obj.REQUEST_FIELDS_TO_SAVE:
+                val = getattr(request, request_field_to_save[0], None)
+                setattr(obj, request_field_to_save[1], val)
 
         # try to utilize django's full_clean method to ensure the model validates
         try:

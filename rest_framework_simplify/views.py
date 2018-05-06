@@ -364,10 +364,11 @@ class SimplifyView(APIView):
         # occasionally we may need to transform the request to fit the model -- this is generally an unrestful call
         if hasattr(self.model, 'transform_request'):
             transformed_request = self.model.transform_request(request)
-            obj = self.model.parse(transformed_request, existing_id=id, reference_fields=reference_fields)
+            obj = self.model.parse(transformed_request, existing_id=id, reference_fields=reference_fields,
+                                   request=request)
         else:
             # check for reference fields to parse them into the model
-            obj = self.model.parse(request.data, existing_id=id, reference_fields=reference_fields)
+            obj = self.model.parse(request.data, existing_id=id, reference_fields=reference_fields, request=request)
 
         obj.cascade_save(write_db=self.write_db)
 
@@ -410,7 +411,7 @@ class SimplifyView(APIView):
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:
             return self.create_response(error_message=ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
-        obj = self.model.parse(request.data, existing_id=pk)
+        obj = self.model.parse(request.data, existing_id=pk, request=request)
 
         obj.cascade_save()
         return self.create_response(obj, serialize=True)

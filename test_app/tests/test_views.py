@@ -536,3 +536,22 @@ class OneToOneTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.data['alternativeId'], oto.alternative_id)
+
+
+class RequestFieldsToSaveTests(unittest.TestCase):
+
+    api_client = APIClient()
+
+    def test_post_with_request_fields_to_save(self):
+        # arrange
+        url = '/requestFieldsToSaveClass'
+        body = {
+
+        }
+
+        # act
+        result = self.api_client.post(url, format='json')
+
+        # assert
+        self.assertEqual(result.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(result.data['method'], 'POST')

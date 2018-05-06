@@ -2,7 +2,8 @@ from django.conf.urls import url
 
 from test_app.views import BasicClassHandler, ChildClassHandler, LinkingClassHandler, \
     LinkingClassWithNoLinkingClsDefinedHandler, MetaDataClassHandler, ReadReplicaBasicClassHandler, \
-    SqlStoredProcedureHandler, PostgresStoredProcedureHandler, SecondDatabaseBasicClassHandler, SendEmailHandler, OneToOneHandler
+    SqlStoredProcedureHandler, PostgresStoredProcedureHandler, SecondDatabaseBasicClassHandler, SendEmailHandler, \
+    OneToOneHandler, RequestFieldSaveHandler
 
 urlpatterns = [
     url(r'^(?P<parent_resource>[a-zA-z]+)/(?P<parent_pk>[0-9]+)/childOne$', ChildClassHandler.as_view()),
@@ -14,6 +15,7 @@ urlpatterns = [
     url(r'^metaDataClass', MetaDataClassHandler.as_view()),
     url(r'^oneToOne/(?P<pk>[0-9]+)$', OneToOneHandler.as_view()),
     url(r'^readReplicaBasicClass/(?P<pk>[0-9]+)$', ReadReplicaBasicClassHandler.as_view()),
+    url(r'^requestFieldsToSaveClass$', RequestFieldSaveHandler.as_view()),
     url(r'^secondDatabaseBasicClass$', SecondDatabaseBasicClassHandler.as_view()),
     url(r'^sendEmail$', SendEmailHandler.as_view()),
     url(r'^sqlStoredProcedures$', SqlStoredProcedureHandler.as_view()),
