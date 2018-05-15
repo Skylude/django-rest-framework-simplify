@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework_simplify.models import SimplifyModel
 from rest_framework_simplify.fields import SimplifyEncryptedCharField
@@ -87,3 +88,58 @@ class RequestFieldSaveClass(SimplifyModel):
 
     id = models.AutoField(primary_key=True)
     method = models.CharField(max_length=32, null=False, blank=False)
+
+
+class Community(SimplifyModel):
+    id = models.AutoField(primary_key=True)
+    phase_group = models.ForeignKey('PhaseGroup', null=False, blank=False, related_name='communities')
+
+
+class Application(SimplifyModel):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=32)
+
+    @staticmethod
+    def get_lead_mgmt_application():
+        try:
+            application = Application.objects.get(name='Lead Mgmt')
+        except ObjectDoesNotExist:
+            application = Application(name='Lead Mgmt')
+            application.save()
+        return application
+
+
+class PhaseGroup(SimplifyModel):
+    FILTERABLE_PROPERTIES = {
+        'active': {
+            'query': models.Q(communities__community_applications__application_id=Application.get_lead_mgmt_application().id) & models.Q(communities__community_applications__active=True)
+        }
+    }
+
+    id = models.AutoField(primary_key=True)
+
+    @property
+    def active(self):
+        some_id = Application.get_lead_mgmt_application().id
+        return bool(self.communities.community_applications.filter(application_id=some_id, active=True))
+
+
+    @staticmethod
+    def get_filters():
+        return {
+            'active': {
+                'type': bool,
+                'list': False
+            }
+        }
+
+
+class CommunityApplication(SimplifyModel):
+    id = models.AutoField(primary_key=True)
+    community = models.ForeignKey('Community', null=False, blank=False, related_name='community_applications')
+    application = models.ForeignKey('Application', null=False, blank=False, related_name='community_applications')
+    active = models.BooleanField(null=False, default=True)
+
+
+
+

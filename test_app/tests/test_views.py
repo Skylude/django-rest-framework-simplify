@@ -18,7 +18,7 @@ from rest_framework.test import APIClient
 
 
 from test_app.tests.helpers import DataGenerator
-from test_app.models import BasicClass, ChildClass, LinkingClass
+from test_app.models import BasicClass, ChildClass, LinkingClass, Application
 
 
 class BasicClassTests(unittest.TestCase):
@@ -555,3 +555,25 @@ class RequestFieldsToSaveTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_201_CREATED)
         self.assertEqual(result.data['method'], 'POST')
+
+
+class FilterablePropertiesTests(unittest.TestCase):
+
+    api_client = APIClient()
+
+    def test_filterable_property_properly_filters(self):
+        # arrange
+        community_one = DataGenerator.set_up_community()
+        community_two = DataGenerator.set_up_community(phase_group=community_one.phase_group)
+        application = Application.get_lead_mgmt_application()
+        community_application_one = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
+        community_application_two = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
+
+        url = '/phaseGroups?filters=active=True'
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(result.data), 0)

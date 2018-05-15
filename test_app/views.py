@@ -2,7 +2,8 @@ from django.conf import settings
 
 from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyView, SimplifyEmailTemplateView
 
-from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass, RequestFieldSaveClass
+from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass, RequestFieldSaveClass, \
+    PhaseGroup
 from test_app import forms, email_templates
 
 
@@ -113,3 +114,8 @@ class OneToOneHandler(SimplifyView):
 class RequestFieldSaveHandler(SimplifyView):
     def __init__(self):
         super().__init__(RequestFieldSaveClass, supported_methods=['POST'])
+
+
+class PhaseGroupHandler(SimplifyView):
+    def __init__(self):
+        super().__init__(PhaseGroup, supported_methods=['GET', 'GET_LIST'])

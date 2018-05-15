@@ -3,7 +3,7 @@ from django.conf.urls import url
 from test_app.views import BasicClassHandler, ChildClassHandler, LinkingClassHandler, \
     LinkingClassWithNoLinkingClsDefinedHandler, MetaDataClassHandler, ReadReplicaBasicClassHandler, \
     SqlStoredProcedureHandler, PostgresStoredProcedureHandler, SecondDatabaseBasicClassHandler, SendEmailHandler, \
-    OneToOneHandler, RequestFieldSaveHandler
+    OneToOneHandler, RequestFieldSaveHandler, PhaseGroupHandler
 
 urlpatterns = [
     url(r'^(?P<parent_resource>[a-zA-z]+)/(?P<parent_pk>[0-9]+)/childOne$', ChildClassHandler.as_view()),
@@ -20,4 +20,5 @@ urlpatterns = [
     url(r'^sendEmail$', SendEmailHandler.as_view()),
     url(r'^sqlStoredProcedures$', SqlStoredProcedureHandler.as_view()),
     url(r'^postgresStoredProcedures$', PostgresStoredProcedureHandler.as_view()),
+    url(r'^phaseGroups$', PhaseGroupHandler.as_view())
 ]

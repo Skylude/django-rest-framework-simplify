@@ -60,3 +60,36 @@ class DataGenerator:
         oto.save()
         return oto
 
+    @staticmethod
+    def set_up_community(phase_group=None):
+        if not phase_group:
+            phase_group = DataGenerator.set_up_phase_group()
+            phase_group.save()
+        community = Community(phase_group=phase_group)
+        community.save()
+        return community
+
+    @staticmethod
+    def set_up_phase_group():
+        phase_group = PhaseGroup()
+        phase_group.save()
+        return phase_group
+
+    @staticmethod
+    def set_up_community_application(community=None, application=None, active=True):
+        if not community:
+            community = DataGenerator.set_up_community()
+            community.save()
+        if not application:
+            application = DataGenerator.set_up_application()
+            application.save()
+        community_application = CommunityApplication(community=community, application=application, active=active)
+        community_application.save()
+        return community_application
+
+
+    @staticmethod
+    def set_up_application():
+        application = Application()
+        application.save()
+        return application

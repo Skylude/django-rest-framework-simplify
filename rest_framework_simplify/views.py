@@ -198,6 +198,13 @@ class SimplifyView(APIView):
                 filter_name = filter_array[0]
                 filter_value = filter_array[1] if len(filter_array) > 1 else None
 
+                # check if this is a filterable property
+                if hasattr(self.model, 'FILTERABLE_PROPERTIES'):
+                    filterable_property = filter_name in self.model.FILTERABLE_PROPERTIES.keys()
+                else:
+                    filterable_property = False
+                filterable_properties = []
+
                 # snake case the name
                 filter_name = Mapper.camelcase_to_underscore(filter_name)
                 if filter_name[0] == '!':
@@ -230,9 +237,16 @@ class SimplifyView(APIView):
                             isolated_filter_kwargs[filter_name] = self.format_filter(filter_name, filter_value,
                                                                                      model_filters)
                         else:
-                            filter_kwargs[filter_name] = self.format_filter(filter_name, filter_value, model_filters)
+                            if filterable_property:
+                                filterable_properties.append(self.model.FILTERABLE_PROPERTIES[filter_name]['query'])
+                            else:
+                                filter_kwargs[filter_name] = self.format_filter(filter_name, filter_value, model_filters)
             # narrow down items with the filters
             obj = obj.using(self.read_db).filter(**filter_kwargs)
+
+            # filter out filterable properties
+            if filterable_properties:
+                obj = obj.using(self.read_db).filter(*filterable_properties)
 
             for filter_name, filter_value in isolated_filter_kwargs.items():
                 filter_name = filter_name.replace('__contains_all', '')
