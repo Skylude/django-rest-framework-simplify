@@ -110,12 +110,6 @@ class Application(SimplifyModel):
 
 
 class PhaseGroup(SimplifyModel):
-    FILTERABLE_PROPERTIES = {
-        'active': {
-            'query': models.Q(communities__community_applications__application_id=Application.get_lead_mgmt_application().id) & models.Q(communities__community_applications__active=True)
-        }
-    }
-
     id = models.AutoField(primary_key=True)
 
     @property
@@ -123,6 +117,15 @@ class PhaseGroup(SimplifyModel):
         some_id = Application.get_lead_mgmt_application().id
         return bool(self.communities.community_applications.filter(application_id=some_id, active=True))
 
+    @staticmethod
+    def get_filterable_properties():
+        return {
+            'active': {
+                'query': models.Q(
+                    communities__community_applications__application_id=Application.get_lead_mgmt_application().id) & models.Q(
+                    communities__community_applications__active=True)
+            }
+        }
 
     @staticmethod
     def get_filters():

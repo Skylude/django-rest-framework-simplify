@@ -199,8 +199,8 @@ class SimplifyView(APIView):
                 filter_value = filter_array[1] if len(filter_array) > 1 else None
 
                 # check if this is a filterable property
-                if hasattr(self.model, 'FILTERABLE_PROPERTIES'):
-                    filterable_property = filter_name in self.model.FILTERABLE_PROPERTIES.keys()
+                if hasattr(self.model, 'get_filterable_properties'):
+                    filterable_property = filter_name in self.model.get_filterable_properties().keys()
                 else:
                     filterable_property = False
                 filterable_properties = []
@@ -238,7 +238,7 @@ class SimplifyView(APIView):
                                                                                      model_filters)
                         else:
                             if filterable_property:
-                                filterable_properties.append(self.model.FILTERABLE_PROPERTIES[filter_name]['query'])
+                                filterable_properties.append(self.model.get_filterable_properties()[filter_name]['query'])
                             else:
                                 filter_kwargs[filter_name] = self.format_filter(filter_name, filter_value, model_filters)
             # narrow down items with the filters
