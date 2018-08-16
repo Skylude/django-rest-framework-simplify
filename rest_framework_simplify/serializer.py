@@ -227,6 +227,18 @@ class SQLEngineSerializer:
             # remove all fields that we don't need after iterating through the items
             [model_dict.pop(field_to_remove, None) for field_to_remove in fields_to_remove]
 
+        if hasattr(obj, 'get_excludes'):
+            excludes = obj.get_excludes()
+            if type(model_dict) is list:
+                for item in model_dict:
+                    for exclude in excludes:
+                        if exclude in item.keys():
+                            del item[exclude]
+            else:
+                for exclude in excludes:
+                    if exclude in model_dict.keys():
+                        del model_dict[exclude]
+
         if self.fields:
             if type(model_dict) is list:
                 pruned_model_dicts = []
@@ -326,6 +338,17 @@ class SQLEngineSerializer:
 
         else:
             self.add_includes_to_view_model(field_obj, include_items, view_model)
+
+        # model to dict removes these but I want to make sure i also remove them here in case they try to include them
+        if type(view_model) is list:
+            for idx, vm in enumerate(view_model):
+                if hasattr('get_excludes', field_obj[idx]):
+                    self.remove_excludes_from_view_model(field_obj[idx].get_excludes(), vm)
+
+        else:
+            if hasattr('get_excludes', field_obj):
+                self.remove_excludes_from_view_model(field_obj.get_excludes(), view_model)
+
         return view_model
 
     # extracted from serialize_related to reuse when serialize related has to do a list with a list inside it
@@ -356,6 +379,12 @@ class SQLEngineSerializer:
                     view_model[field] = dict_item
                 else:
                     view_model[field] = None
+
+    @staticmethod
+    def remove_excludes_from_view_model(exclude_items, view_model):
+        for exclude_item in exclude_items:
+            if exclude_item in view_model.keys():
+                del view_model[exclude_item]
 
     @staticmethod
     def format_data(data, pk):

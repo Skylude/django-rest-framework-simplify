@@ -1,3 +1,6 @@
+### 8/16/2018 1.2.1
+Added exclude functionality on included items to ensure they are never included by accident
+
 ### 5/15/2018 1.2.0
 Added get_filterable_properties to the SimplifyModel which will allow you to filter based on a property that is on the model. Currently this is restricted to predefined values and cannot accept arguments to the filter at this time. Look at the PhaseGroup model and URL for examples.
 

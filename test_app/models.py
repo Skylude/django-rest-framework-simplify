@@ -16,6 +16,7 @@ class BasicClass(SimplifyModel):
     child_two = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_two')
     exclude_field = models.CharField(max_length=25, null=True, blank=True)
     child_three = models.ManyToManyField('ChildClass', null=True, blank=True, related_name='basic_class_three')
+    model_with_sensitive_data = models.OneToOneField('ModelWithSensitiveData', null=True, blank=True)
 
     @property
     def test_prop(self):
@@ -41,7 +42,7 @@ class BasicClass(SimplifyModel):
 
     @staticmethod
     def get_includes():
-        return ['child_one__id', 'child_three']
+        return ['child_one__id', 'child_three', 'model_with_sensitive_data']
 
     @staticmethod
     def get_excludes():
@@ -144,5 +145,12 @@ class CommunityApplication(SimplifyModel):
     active = models.BooleanField(null=False, default=True)
 
 
+class ModelWithSensitiveData(SimplifyModel):
+    id = models.AutoField(primary_key=True)
+    basic_text = models.CharField(max_length=32, null=True, blank=True)
+    top_secret = models.CharField(max_length=32, null=True, blank=True)
 
+    @staticmethod
+    def get_excludes():
+        return ['top_secret']
 

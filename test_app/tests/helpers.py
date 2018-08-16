@@ -7,11 +7,13 @@ from test_app.models import *
 
 class DataGenerator:
     @staticmethod
-    def set_up_basic_class(name=None, child_one=None, child_two=None, active=True, write_db='default', child_three_count=2):
+    def set_up_basic_class(name=None, child_one=None, child_two=None, active=True, write_db='default',
+                           child_three_count=2, model_with_sensitive_data=None):
         if not name:
             name = str(uuid.uuid4())[:15]
 
-        basic_class = BasicClass(name=name, child_one=child_one, child_two=child_two, active=active)
+        basic_class = BasicClass(name=name, child_one=child_one, child_two=child_two, active=active,
+                                 model_with_sensitive_data=model_with_sensitive_data)
 
         basic_class.save(using=write_db)
         for x in range(0, child_three_count):
@@ -53,6 +55,14 @@ class DataGenerator:
         meta_data_class = MetaDataClass(choice=MetaDataClass.CHOICES[rand_choice][0])
         meta_data_class.save()
         return meta_data_class
+
+    @staticmethod
+    def set_up_model_with_sensitive_data():
+        basic_text = str(uuid.uuid4())[:25]
+        top_secret = str(uuid.uuid4())[:17]
+        model_with_sensitive_data = ModelWithSensitiveData(basic_text=basic_text, top_secret=top_secret)
+        model_with_sensitive_data.save()
+        return model_with_sensitive_data
 
     @staticmethod
     def set_up_ont_to_one_class():

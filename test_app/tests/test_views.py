@@ -276,6 +276,18 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(len(result.data.keys()), 1)
 
+    def test_get_with_include_that_has_excludes_removes_fields_properly(self):
+        # arrange
+        model_with_sensitive_data = DataGenerator.set_up_model_with_sensitive_data()
+        basic_class = DataGenerator.set_up_basic_class(model_with_sensitive_data=model_with_sensitive_data)
+        url = '/basicClass/{0}?include=model_with_sensitive_data'.format(basic_class.id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertNotIn('topSecret', result.data['modelWithSensitiveData'].keys())
+
 
 class ReadReplicaTests(unittest.TestCase):
     api_client = APIClient()
