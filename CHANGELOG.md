@@ -1,4 +1,4 @@
-### 8/16/2018 1.2.1
+### 8/16/2018 1.2.2
 Added exclude functionality on included items to ensure they are never included by accident
 
 ### 5/15/2018 1.2.0

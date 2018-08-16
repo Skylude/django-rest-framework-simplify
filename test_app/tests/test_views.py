@@ -286,6 +286,7 @@ class BasicClassTests(unittest.TestCase):
         result = self.api_client.get(url, format='json')
 
         # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertNotIn('topSecret', result.data['modelWithSensitiveData'].keys())
 
 

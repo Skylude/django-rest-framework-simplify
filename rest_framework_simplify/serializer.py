@@ -342,11 +342,11 @@ class SQLEngineSerializer:
         # model to dict removes these but I want to make sure i also remove them here in case they try to include them
         if type(view_model) is list:
             for idx, vm in enumerate(view_model):
-                if hasattr('get_excludes', field_obj[idx]):
+                if hasattr(field_obj[idx], 'get_excludes'):
                     self.remove_excludes_from_view_model(field_obj[idx].get_excludes(), vm)
 
         else:
-            if hasattr('get_excludes', field_obj):
+            if hasattr(field_obj, 'get_excludes'):
                 self.remove_excludes_from_view_model(field_obj.get_excludes(), view_model)
 
         return view_model
