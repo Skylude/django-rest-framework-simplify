@@ -323,7 +323,7 @@ class SimplifyView(APIView):
             exc_filename = frame.f_code.co_filename
 
         # log error
-        logger = logging.getLogger('django.request')
+        logger = logging.getLogger('rest-framework-simplify-exception')
         extra_logging = {
             'rq_query_params': query_params,
             'rq_data': request_data,
@@ -527,7 +527,7 @@ class SimplifyStoredProcedureView(APIView):
             request_data = self.request.data
 
         # log error
-        logger = logging.getLogger('django.request')
+        logger = logging.getLogger('rest-framework-simplify-exception')
         extra_logging = {
             'rq_query_params': query_params,
             'rq_data': request_data,
@@ -602,7 +602,7 @@ class SimplifyEmailTemplateView(APIView):
             request_data = self.request.data
 
         # log error
-        logger = logging.getLogger('django.request')
+        logger = logging.getLogger('rest-framework-simplify-exception')
         extra_logging = {
             'rq_query_params': query_params,
             'rq_data': request_data,
