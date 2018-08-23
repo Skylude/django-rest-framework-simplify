@@ -375,8 +375,12 @@ class SQLEngineSerializer:
             else:
                 item_to_serialize = getattr(field_obj, field)
                 if item_to_serialize is not None:
-                    dict_item = self.model_to_dict(item_to_serialize)
-                    view_model[field] = dict_item
+                    # do we check if they are basic types and then not try and serialize?
+                    if type(item_to_serialize) in [int, bool, str, float, dict]:
+                        view_model[field] = item_to_serialize
+                    else:
+                        dict_item = self.model_to_dict(item_to_serialize)
+                        view_model[field] = dict_item
                 else:
                     view_model[field] = None
 
