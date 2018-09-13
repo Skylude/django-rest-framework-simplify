@@ -60,6 +60,8 @@ class PostgresStoredProcedureForm(StoredProcedureForm):
         sp_params = sql_executor.get_stored_procedure_params(self.sp_name)
         params = []
         for field in sp_params:
+            if field == '' and len(sp_params) == 1:
+                return params
             try:
                 # todo this could cause issues with someone wanting to pass in an empty string as a param
                 if self.cleaned_data[field] != '':
