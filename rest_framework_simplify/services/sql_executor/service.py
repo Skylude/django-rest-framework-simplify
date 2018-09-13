@@ -92,6 +92,8 @@ class PostgresExecutorService(SQLExecutorService):
         for x in result[0][0].split(','):
             res.append(x.lstrip().split(' ')[0])
         conn.close()
+        if len(res) == 1 and res[0] == '':
+            return []
         return res
 
 
