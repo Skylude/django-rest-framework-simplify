@@ -1,3 +1,6 @@
+### 9/14/2018 1.2.5
+psycopg2 updated to version 2.7.3 so verify compatability
+
 ### 8/16/2018 1.2.2
 Added exclude functionality on included items to ensure they are never included by accident
 
