@@ -6,37 +6,30 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3.6.5
+      - image: circleci/postgres:9.6.2
         environment:
-        - PG_HOST=localhost
-        - PG_USER=ubuntu
-      - image: circleci/postgres:9.6
-        environment:
-        - POSTGRES_USER=ubuntu
+        - POSTGRES_USER=test
 
     working_directory: ~/django-rest-framework-simplify
 
     steps:
       - checkout
 
-      - run:
-          name: Wait for db
-          command: dockerize -wait tcp://localhost:5432 -timeout 1m
-
       # need to install pyodbc dependency
-      - run:
-          name: pyodbc dependency
-          command: |
-            sudo apt-get install software-properties-common python-software-properties
-            sudo apt-get update
-            sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3 freetds-dev
-            tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
-            sed -i 's/uname \-p/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh
-            ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
-            cd /tmp/$(ls /tmp | grep unixODBC)/unixODBC-2.3.1&& sudo make install
-            sed -i 's/uname \-p/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/install.sh
-            cd ~/django-rest-framework-simplify/msodbcsql-13.0.0.0&& sudo ./install.sh install --accept-license
-            sudo ln -s /usr/lib64/libodbcinst.so.2 /lib/x86_64-linux-gnu/libodbcinst.so.2
+      #- run:
+      #    name: pyodbc dependency
+      #    command: |
+      #      sudo apt-get install software-properties-common python-software-properties
+      #      sudo apt-get update
+      #      sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3 freetds-dev
+      #      tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
+      #      sed -i 's/uname \-p/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh
+      #      ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
+      #      cd /tmp/$(ls /tmp | grep unixODBC)/unixODBC-2.3.1&& sudo make install
+      #      sed -i 's/uname \-p/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/install.sh
+      #      cd ~/django-rest-framework-simplify/msodbcsql-13.0.0.0&& sudo ./install.sh install --accept-license
+      #      sudo ln -s /usr/lib64/libodbcinst.so.2 /lib/x86_64-linux-gnu/libodbcinst.so.2
 
       # Download and cache dependencies
       - restore_cache:
@@ -46,25 +39,22 @@ jobs:
           - v1-dependencies-
 
       - run:
+          name: Install FreeTDS
+          command: |
+            sudo apt-get update && sudo apt-get install freetds-dev libssl-dev
+
+      - run:
           name: install dependencies
           command: |
             python3 -m venv venv
             . venv/bin/activate
+            pip install --upgrade pip
             pip install -r requirements.txt
 
       - save_cache:
           paths:
             - ./venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}
-
-      # create posgres user with superuser permissions
-      - run:
-          name: setup postgres users
-          command: |
-            sudo apt update
-            sudo apt install postgresql-client
-            sudo -u root psql -p 5432 -h 127.0.0.1 -U ubuntu -c "CREATE USER test WITH PASSWORD 'test';"
-            sudo -u root psql -p 5432 -h 127.0.0.1 -U ubuntu -c "ALTER USER test WITH superuser;"
 
       # run tests!
       - run:
