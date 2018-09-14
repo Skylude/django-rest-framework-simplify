@@ -63,8 +63,8 @@ jobs:
           command: |
             sudo apt update
             sudo apt install postgresql-client
-            sudo -u root psql -p 5432 -h 127.0.0.1 -U postgres -c "CREATE USER test WITH PASSWORD 'test';"
-            sudo -u root psql -p 5432 -h 127.0.0.1 -U postgres -c "ALTER USER test WITH superuser;"
+            sudo -u root psql -p 5432 -h 127.0.0.1 -U ubuntu -c "CREATE USER test WITH PASSWORD 'test';"
+            sudo -u root psql -p 5432 -h 127.0.0.1 -U ubuntu -c "ALTER USER test WITH superuser;"
 
       # run tests!
       - run:
