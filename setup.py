@@ -14,7 +14,7 @@ setup(
         'bson',
         'Django',
         'djangorestframework',
-        'mongoengine',
+        'mongoengine==0.9.0',
         'packaging',
         'psycopg2',
         'pycrypto',
