@@ -112,6 +112,7 @@ class EmailTemplateForm(forms.Form):
             'from': default_data.get('from', None),
             'templateName': default_data.get('templateName', None),
             'templatePath': default_data.get('templatePath', None),
+            'templateContents': default_data.get('templateContents', None),
             'sendEmailMethod': default_data.get('sendEmailMethod', None)
         }
 
@@ -125,10 +126,12 @@ class EmailTemplateForm(forms.Form):
             raise EmailTemplateException(self.ErrorMessages.INVALID_PARAMS.format(self.default_data['templateName']))
 
         # check template path
-        if not self.default_data['templatePath']:
+        if not self.default_data['templatePath'] and not self.default_data['templateContents']:
             raise EmailTemplateException(self.ErrorMessages.MISSING_EMAIL_TEMPLATE_PATH.format(self.default_data['templateName']))
 
-        if self.default_data['templatePath'][:7].lower() == 'http://' or self.default_data['templatePath'][:8].lower() == 'https://':
+        if self.default_data['templateContents']:
+            html = self.default_data['templateContents']
+        elif self.default_data['templatePath'][:7].lower() == 'http://' or self.default_data['templatePath'][:8].lower() == 'https://':
             # get template via requests.get
             req = requests.get(self.default_data['templatePath'])
             if req.status_code != 200:
