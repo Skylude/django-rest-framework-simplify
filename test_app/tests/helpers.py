@@ -97,9 +97,18 @@ class DataGenerator:
         community_application.save()
         return community_application
 
-
     @staticmethod
     def set_up_application():
         application = Application()
         application.save()
         return application
+
+    @staticmethod
+    def set_up_model_with_parent_resource(basic_class=None):
+        model_with_parent_resource = ModelWithParentResource()
+        if not basic_class:
+            basic_class = DataGenerator.set_up_basic_class()
+        model_with_parent_resource.basic_class = basic_class
+        model_with_parent_resource.text_field = str(uuid.uuid4())[:20]
+        model_with_parent_resource.save()
+        return model_with_parent_resource

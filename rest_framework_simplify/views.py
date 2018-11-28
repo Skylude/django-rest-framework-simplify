@@ -98,13 +98,21 @@ class SimplifyView(APIView):
         obj = None
         # if we have a primary key we are returning one result
         if pk:
-            if 'GET' not in self.supported_methods:
+            if not parent_resource and not parent_pk and 'GET' not in self.supported_methods:
                 return self.create_response(error_message=ErrorMessages.GET_NOT_SUPPORTED.format(self.model.__name__))
-            # try to get the obj from db
-            try:
-                obj = self.model.objects.using(self.read_db).get(pk=pk)
-            except self.DoesNotExist:
-                raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+
+            # try to get the sub resource of a parent -- this is to ensure you can only get access to sub items if you
+            # have access to their parent item
+            if parent_resource and parent_pk and self.linked_objects:
+                if 'GET_SUB' not in self.supported_methods:
+                    return self.create_response(error_message=ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
+                obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
+            # try to get the obj from db with no parent resource
+            else:
+                try:
+                    obj = self.model.objects.using(self.read_db).get(pk=pk)
+                except self.DoesNotExist:
+                    raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
         else:
             # we could be a sub resource so we need to check if a parent_resource was passed in
@@ -126,28 +134,7 @@ class SimplifyView(APIView):
                     if 'GET_LIST_SUB' not in self.supported_methods:
                         return self.create_response(error_message=ErrorMessages.GET_LIST_SUB_NOT_SUPPORTED.format(self.model.__name__))
                     # find the resource that this request is looking for
-                    for linked_object in self.linked_objects:
-                        if linked_object['parent_resource'] == parent_resource:
-                            if linked_object['parent_cls']:
-                                # get the resource
-                                parent_obj = linked_object['parent_cls'].objects.using(self.read_db).get(pk=parent_pk)
-                            else:
-                                parent_obj = parent_pk
-                            # setup kwargs for django's orm to query
-                            kwargs = {
-                                linked_object['parent_name']: parent_obj
-                            }
-                            # if there is a linking table do that logic
-                            if linked_object['linking_cls']:
-                                # get the linking table items
-                                linked_objs = linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs)
-                                # go through linking table items and get the sub resources from each entry into a list
-                                linked_obj_ids = [getattr(linked_obj, linked_object['sub_resource_name']).id for linked_obj in
-                                                  linked_objs]
-                                obj = self.model.objects.using(self.read_db).filter(pk__in=linked_obj_ids)
-                            # no linking table and the link is on this obj itself
-                            else:
-                                obj = self.model.objects.using(self.read_db).filter(**kwargs)
+                    obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
             else:
                 # trying to get ALL items in DB
                 if 'GET_LIST' not in self.supported_methods:
@@ -292,6 +279,51 @@ class SimplifyView(APIView):
         return self.create_response(body=obj, serialize=True, include=include, exclude=excludes, fields=fields,
                                     count=total_items, using_cache=False, cache_key=cache_key)
 
+    def get_obj_from_linked_objects(self, pk, parent_resource, parent_pk):
+        # find the resource that this request is looking for
+        for linked_object in self.linked_objects:
+            if linked_object['parent_resource'] == parent_resource:
+                if linked_object['parent_cls']:
+                    # get the resource
+                    parent_obj = linked_object['parent_cls'].objects.using(self.read_db).get(pk=parent_pk)
+                else:
+                    parent_obj = parent_pk
+                # setup kwargs for django's orm to query
+                kwargs = {
+                    linked_object['parent_name']: parent_obj
+                }
+
+                # if there is a linking table do that logic
+                if linked_object['linking_cls']:
+                    # we have pk so we only need to check if the one linker exists
+                    if pk:
+                        try:
+                            kwargs[linked_object['sub_resource_name']] = pk
+                            linked_obj = linked_object['linking_cls'].objects.using(self.read_db).get(**kwargs)
+                        except self.DoesNotExist:
+                            raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+                        else:
+                            return self.model.objects.using(read_db).get(pk=pk)
+
+                    else:
+                        # get the linking table items
+                        linked_objs = linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs)
+
+                        # go through linking table items and get the sub resources from each entry into a list
+                        linked_obj_ids = [getattr(linked_obj, linked_object['sub_resource_name']).id for
+                                          linked_obj in
+                                          linked_objs]
+                        return self.model.objects.using(self.read_db).filter(pk__in=linked_obj_ids)
+                # no linking table and the link is on this obj itself
+                else:
+                    # if we have a pk we only want the exact resource we are looking for
+                    if pk:
+                        kwargs['pk'] = pk
+                        return self.model.objects.using(self.read_db).get(**kwargs)
+                    # no pk was passed in meaning we are getting the entire list of items that match the parent resource
+                    else:
+                        return self.model.objects.using(self.read_db).filter(**kwargs)
+
     def handle_exception(self, exc):
         status_code = status.HTTP_400_BAD_REQUEST
         if isinstance(exc, (exceptions.NotAuthenticated,
@@ -393,32 +425,6 @@ class SimplifyView(APIView):
 
             snake_cased_url_tail = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
             self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
-
-            # for linked_object in self.linked_objects:
-            #     if linked_object['parent_resource'] == parent_resource:
-            #         # get the resource
-            #         parent_obj = linked_object['parent_cls'].objects.get(pk=parent_pk)
-            #         # if there is a linking table do that logic
-            #         if linked_object['linking_cls']: # ***************** linking class **********************
-            #             # create new linking table
-            #             new_linking_obj = linked_object['linking_cls']()
-            #             setattr(new_linking_obj, linked_object['parent_name'], parent_obj)
-            #             setattr(new_linking_obj, linked_object['sub_resource_name'], obj)
-            #             new_linking_obj.save()
-            #         # no linking table -- could have been taken care of the in parse so check if the field is null
-            #         else:
-            #             lives_on_parent = linked_object['lives_on_parent'] if 'lives_on_parent' \
-            #                                                                   in linked_object.keys() else False
-            #             if lives_on_parent: # ********** lives on parent *****************
-            #                 sub_resource_url = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
-            #                 if sub_resource_url == linked_object['sub_resource_name']:
-            #                     parent_obj = linked_object['parent_cls'].objects.get(pk=parent_pk)
-            #                     setattr(parent_obj, linked_object['sub_resource_name'], obj)
-            #                     parent_obj.save()
-            #             else:  # *************** lives on child ****************
-            #                 if not hasattr(obj, linked_object['parent_name']):
-            #                     setattr(obj, linked_object['parent_name'], parent_obj)
-            #                     obj.save()
 
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
 

@@ -154,3 +154,8 @@ class ModelWithSensitiveData(SimplifyModel):
     def get_excludes():
         return ['top_secret']
 
+
+class ModelWithParentResource(SimplifyModel):
+    id = models.AutoField(primary_key=True)
+    text_field = models.CharField(max_length=32, null=True, blank=True)
+    basic_class = models.ForeignKey('BasicClass', null=False, blank=False)

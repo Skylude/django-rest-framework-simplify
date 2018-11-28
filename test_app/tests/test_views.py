@@ -289,6 +289,31 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertNotIn('topSecret', result.data['modelWithSensitiveData'].keys())
 
+    def test_get_sub_with_pk_and_non_matching_parent_id_should_400(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        model = DataGenerator.set_up_model_with_parent_resource(basic_class=basic_class)
+        other_model = DataGenerator.set_up_model_with_parent_resource()
+        url = '/basicClasses/{0}/modelWithParentResources/{1}'.format(other_model.id, model.id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_400_BAD_REQUEST, result.status_code)
+
+    def test_get_sub_with_pk_and_matching_parent_pk_should_200(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        model = DataGenerator.set_up_model_with_parent_resource(basic_class=basic_class)
+        url = '/basicClasses/{0}/modelWithParentResources/{1}'.format(basic_class.id, model.id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+
 
 class ReadReplicaTests(unittest.TestCase):
     api_client = APIClient()

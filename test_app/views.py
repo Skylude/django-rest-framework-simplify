@@ -3,7 +3,7 @@ from django.conf import settings
 from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyView, SimplifyEmailTemplateView
 
 from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass, RequestFieldSaveClass, \
-    PhaseGroup
+    PhaseGroup, ModelWithParentResource
 from test_app import forms, email_templates
 
 
@@ -119,3 +119,18 @@ class RequestFieldSaveHandler(SimplifyView):
 class PhaseGroupHandler(SimplifyView):
     def __init__(self):
         super().__init__(PhaseGroup, supported_methods=['GET', 'GET_LIST'])
+
+
+class ModelWithParentResourceHandler(SimplifyView):
+    def __init__(self):
+        linked_objects = []
+        model_with_parent_resource = {
+            'parent_resource': 'basicClasses',
+            'parent_cls': BasicClass,
+            'parent_name': 'basic_class',
+            'linking_cls': None,
+            'sub_resource_name': None,
+            'lives_on_parent': False
+        }
+        linked_objects.append(model_with_parent_resource)
+        super().__init__(ModelWithParentResource, supported_methods=['GET_SUB'], linked_objects=linked_objects)
