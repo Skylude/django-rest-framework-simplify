@@ -426,9 +426,6 @@ class SimplifyView(APIView):
             snake_cased_url_tail = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
             self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
 
-        if obj.force_refresh_on_save:
-            write_db = self.write_db or 'default'
-            obj.refresh_from_db(using=write_db)
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
 
     def put(self, request, pk):
