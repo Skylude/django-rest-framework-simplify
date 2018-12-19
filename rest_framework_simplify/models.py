@@ -25,6 +25,7 @@ class SimplifyModel(DjangoModel):
 
     parseable_levels = 1
     resource_mapping = {}
+    force_refresh_on_save = False
 
     def __init__(self, *args, **kwargs):
         super(SimplifyModel, self).__init__(*args, **kwargs)

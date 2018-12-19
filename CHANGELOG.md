@@ -1,3 +1,6 @@
+### 12/18/2018 1.2.9
+Added force_refresh_on_save to SimplifyModel so if you are doing any logic in a post_save that needs to be refreshed before serialization you can set this to True on the model
+
 ### 9/14/2018 1.2.5
 psycopg2 updated to version 2.7.3 so verify compatability
 
