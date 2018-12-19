@@ -1,4 +1,4 @@
-### 12/18/2018 1.2.9
+### 12/18/2018 1.3.0
 Added force_refresh_on_save to SimplifyModel so if you are doing any logic in a post_save that needs to be refreshed before serialization you can set this to True on the model
 
 ### 9/14/2018 1.2.5

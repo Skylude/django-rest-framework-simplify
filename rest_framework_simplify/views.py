@@ -427,7 +427,8 @@ class SimplifyView(APIView):
             self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
 
         if obj.force_refresh_on_save:
-            obj.refresh_from_db(using=self.write_db)
+            write_db = self.write_db or 'default'
+            obj.refresh_from_db(using=write_db)
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
 
     def put(self, request, pk):
