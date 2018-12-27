@@ -198,7 +198,7 @@ class SimplifyModel(DjangoModel):
                 field_data['related_model'] = related_model
             field_data['name'] = name
             field_data['type'] = internal_type
-            if field.choices:
+            if hasattr(field, 'choices'):
                 field_data['choices'] = field.choices
             meta_data['fields'].append(field_data)
         return meta_data
