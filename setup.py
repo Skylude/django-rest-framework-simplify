@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='django-rest-framework-simplify',
-    version='1.3.2.dev1',
+    version='1.3.3.dev1',
     description='Django Rest Framework Simplify',
     author='Skyler Cain',
     author_email='skylercain@gmail.com',
@@ -11,7 +11,6 @@ setup(
     install_requires=[
         'appdirs',
         'blinker',
-        'bson',
         'Django',
         'djangorestframework',
         'mongoengine==0.9.0',
