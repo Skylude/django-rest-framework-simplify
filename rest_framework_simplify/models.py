@@ -1,6 +1,7 @@
 import datetime
 import decimal
 
+from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db.models import Model as DjangoModel
 from django.db.models.fields import BinaryField, DateTimeField as DjangoDateTimeField, DecimalField
@@ -163,6 +164,9 @@ class SimplifyModel(DjangoModel):
         if hasattr(obj, 'REQUEST_FIELDS_TO_SAVE'):
             for request_field_to_save in obj.REQUEST_FIELDS_TO_SAVE:
                 val = getattr(request, request_field_to_save[0], None)
+                # if we are trying to save a user and its the anonymous one fail
+                if val is AnonymousUser:
+                    continue
                 setattr(obj, request_field_to_save[1], val)
 
         # try to utilize django's full_clean method to ensure the model validates
