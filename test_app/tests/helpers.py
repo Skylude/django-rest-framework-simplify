@@ -40,6 +40,15 @@ class DataGenerator:
         return encrypted_class
 
     @staticmethod
+    def set_up_encrypted_class_with_no_display_value(value=None):
+        if not value:
+            value = str(uuid.uuid4())[:9]
+
+        encrypted_class_without_display_value = EncryptedClassNoDisplayChars(encrypted_val=value)
+        encrypted_class_without_display_value.save()
+        return encrypted_class_without_display_value
+
+    @staticmethod
     def set_up_linking_class(basic_class=None, child_class=None):
         if not basic_class:
             basic_class = DataGenerator.set_up_basic_class()
