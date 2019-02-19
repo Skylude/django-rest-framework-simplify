@@ -48,7 +48,7 @@ class SimplifyEncryptedField(models.Field):
         value = super(SimplifyEncryptedField, self).get_db_prep_save(value, connection)
 
         if value is not None:
-            remainder = len(value) % 16
+            remainder = len(value) % BLOCK_SIZE
             pad_length = BLOCK_SIZE - remainder
             value += pad_length * '\0'
             encrypted_value = self.algorithm.encrypt(value)
