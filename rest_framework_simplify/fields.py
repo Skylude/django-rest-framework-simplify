@@ -48,20 +48,21 @@ class SimplifyEncryptedField(models.Field):
         value = super(SimplifyEncryptedField, self).get_db_prep_save(value, connection)
 
         if value is not None:
-            pad_length = BLOCK_SIZE - (len(value))
-            value += pad_length * chr(pad_length)
+            remainder = len(value) % BLOCK_SIZE
+            pad_length = BLOCK_SIZE - remainder
+            value += pad_length * '\0'
             encrypted_value = self.algorithm.encrypt(value)
             return connection.Database.Binary(encrypted_value)
 
     def from_db_value(self, value, expression, connection, context):
         if value is not None:
             value = bytes(value)
-            decrypted_value = self.algorithm.decrypt(value)
+            decrypted_value = self.algorithm.decrypt(value).split(b'\0')[0]
             return self.to_python(decrypted_value)
 
     def to_python(self, value):
         if value is not None:
-            value = force_text(value).replace('\x07', '')
+            value = force_text(value)
             if hasattr(self, 'display_chars') and self.display_chars != 0:
                 value = value[self.display_chars:]
 
