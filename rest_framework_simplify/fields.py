@@ -62,7 +62,7 @@ class SimplifyEncryptedField(models.Field):
 
     def to_python(self, value):
         if value is not None:
-            value = force_text(value).replace('\0', '')
+            value = force_text(value)
             if hasattr(self, 'display_chars') and self.display_chars != 0:
                 value = value[self.display_chars:]
 
