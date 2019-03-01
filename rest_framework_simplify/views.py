@@ -310,9 +310,8 @@ class SimplifyView(APIView):
                         linked_objs = linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs)
 
                         # go through linking table items and get the sub resources from each entry into a list
-                        linked_obj_ids = [getattr(linked_obj, linked_object['sub_resource_name']).id for
-                                          linked_obj in
-                                          linked_objs]
+                        linked_obj_ids = linked_objs.values_list(linked_object['sub_resource_name'] + '__id', flat=True)
+
                         return self.model.objects.using(self.read_db).filter(pk__in=linked_obj_ids)
                 # no linking table and the link is on this obj itself
                 else:
