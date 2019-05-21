@@ -162,9 +162,11 @@ class SQLEngineSerializer:
         # if its a related manager field (many to one or many to many) -- get all objs
 
         if issubclass(type(obj), Manager):
-            obj = obj.all()
+            obj = list(obj.all())
 
         if type(obj) == DjangoQuerySet or type(obj) == list:
+            if len(obj) == 0:
+                return []
             foreign_key_fields, decimal_fields, binary_fields, all_fields = self.get_fields_by_type(type(obj[0]))
             # json_data_str = serializers.serialize('json', obj)
             # plain_dict = json.loads(json_data_str)
