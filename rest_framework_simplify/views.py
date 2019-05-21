@@ -95,6 +95,9 @@ class SimplifyView(APIView):
             if result:
                 return self.create_response(body=result, using_cache=True, cache_key=cache_key)
 
+        is_single_result = False
+        empty_is_error = False
+        simple = True
         obj = None
         # if we have a primary key we are returning one result
         if pk:
@@ -107,12 +110,13 @@ class SimplifyView(APIView):
                 if 'GET_SUB' not in self.supported_methods:
                     return self.create_response(error_message=ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
                 obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
+                is_single_result = True
+                empty_is_error = True
             # try to get the obj from db with no parent resource
             else:
-                try:
-                    obj = self.model.objects.using(self.read_db).get(pk=pk)
-                except self.DoesNotExist:
-                    raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+                obj = self.model.objects.using(self.read_db).filter(pk=pk)
+                is_single_result = True
+                empty_is_error = True
 
         else:
             # we could be a sub resource so we need to check if a parent_resource was passed in
@@ -127,14 +131,19 @@ class SimplifyView(APIView):
                         return self.create_response(error_message=ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
 
                     linked_object = lives_on_parent_results[0]
-                    parent_obj = linked_object['parent_cls'].objects.using(self.read_db).get(pk=parent_pk)
-                    obj = getattr(parent_obj, linked_object['sub_resource_name'])
+                    child_id_field_name = linked_object['sub_resource_name']+'_id'
+                    child_id = linked_object['parent_cls'].objects.using(self.read_db).values(child_id_field_name).get(pk=parent_pk)[child_id_field_name]
+                    obj = self.model.objects.using(self.read_db).filter(pk=child_id)
+                    is_single_result = True
                 else:
                     # check if this method has authorized sub resources
                     if 'GET_LIST_SUB' not in self.supported_methods:
                         return self.create_response(error_message=ErrorMessages.GET_LIST_SUB_NOT_SUPPORTED.format(self.model.__name__))
                     # find the resource that this request is looking for
                     obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
+                    if pk is not None:
+                        is_single_result = True
+
             else:
                 # trying to get ALL items in DB
                 if 'GET_LIST' not in self.supported_methods:
@@ -148,7 +157,7 @@ class SimplifyView(APIView):
             if type(req_includes) is not list:
                 req_includes = [req_includes]
         model_includes = self.model.get_includes() if hasattr(self.model, 'get_includes') else []
-        include = [include.strip() for include in req_includes if Mapper.camelcase_to_underscore(include.strip()) in model_includes]
+        include = [Mapper.camelcase_to_underscore(include.strip()) for include in req_includes if Mapper.camelcase_to_underscore(include.strip()) in model_includes]
 
         # handle fields
         # if they explicitly ask for the field do we need to make them pass includes as well? currently yes
@@ -165,9 +174,48 @@ class SimplifyView(APIView):
             model_fields.append(field.name)
             if type(field) in [OneToOneField, ForeignKey]:
                 foreign_key_ids.append(field.name + '_id')
-        fields = [field.strip() for field in req_fields if
-                  Mapper.camelcase_to_underscore(field.strip())
-                  in model_fields or field.strip() in include or Mapper.camelcase_to_underscore(field.strip()) in foreign_key_ids]
+        requested_fields = [
+            Mapper.camelcase_to_underscore(field.strip())
+            for field in req_fields 
+            if Mapper.camelcase_to_underscore(field.strip()) in model_fields 
+            or field.strip() in include 
+            or Mapper.camelcase_to_underscore(field.strip()) in foreign_key_ids
+        ]
+        fields = requested_fields
+
+        if len(fields) > 0:
+            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
+            if model_primary_key_name not in fields:
+                simple = False
+
+        if simple and len(req_fields) == 0:
+            fields = [field.attname for field in self.model._meta.get_fields() if not field.auto_created and field.concrete]
+            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
+
+        full_includes = []
+        multi_field = []
+        if len(include) > 0:
+            includes_on_model = []
+            for field_name in include:
+                try:
+                    includes_on_model.append(self.model._meta.get_field(field_name))
+                except:
+                    # handling property includes or nested includes is insanity. Give up on optimizations and use the old way
+                    simple = False
+
+            if simple:
+                for include_field in includes_on_model:
+                    if hasattr(include_field, 'related_model'):
+                        exclude_fields = include_field.related_model.get_excludes() if hasattr(include_field.related_model, 'get_excludes') else []
+                        include_fields = [
+                            include_field.name + '__' + field.attname 
+                            for field in include_field.related_model._meta.get_fields()
+                            if not field.auto_created and field.concrete and field.name not in exclude_fields
+                        ]
+                        fields.extend(include_fields)
+                        full_includes.append(include_field.name)
+                    if hasattr(include_field, 'multiple') and include_field.multiple:
+                        multi_field.append(include_field.name)
 
         # gefilter fish
         filters = request.query_params.get('filters', [])
@@ -276,22 +324,125 @@ class SimplifyView(APIView):
         # setup excludes
         excludes = self.model.get_excludes() if hasattr(self.model, 'get_excludes') else []
 
-        return self.create_response(body=obj, serialize=True, include=include, exclude=excludes, fields=fields,
-                                    count=total_items, using_cache=False, cache_key=cache_key)
+        if simple:
+            fields = [field for field in fields if field not in excludes]
+
+            for field_name in fields:
+                try:
+                    field = self.model._meta.get_field(field_name)
+                    if hasattr(field, 'multiple') and field.multiple:
+                        multi_field.append(field.name)
+                except:
+                    pass
+
+
+            body = list(obj.values(*fields))
+
+            body_by_primary_key = {}
+            # pk is not always id
+            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
+            for body_item in body:
+                if body_item[model_primary_key_name] not in body_by_primary_key:
+                    body_by_primary_key[body_item[model_primary_key_name]] = []
+                body_by_primary_key[body_item[model_primary_key_name]].append(body_item)
+
+            for primary_key in body_by_primary_key:
+                body_items = body_by_primary_key[primary_key]
+
+                # process full includes
+                for body_item in body_items:
+                    for include_field in full_includes:
+                        field_names = [field for field in body_item if include_field + '__' in field]
+                        field_names_to_remove = [field for field in field_names if field not in include]
+
+                        body_item[include_field] = {
+                            field_name.replace(include_field + "__", ''):body_item[field_name]
+                            for field_name in field_names
+                        }
+
+                        for field_name in field_names_to_remove:
+                            del body_item[field_name]
+
+                # handle possible many to many relationships
+                if len(body_items) > 1:
+                    keys = [key for key in body_items[0]]
+                    checked_values = {}
+                    differences = []
+                    for item in body_items:
+                        for key in keys:
+                            if key not in checked_values:
+                                checked_values[key] = item[key]
+                            if checked_values[key] != item[key]:
+                                differences.append(key)
+
+                    if len(differences) > 0:
+                        item = body_items[0]
+                        for difference in differences:
+                            item[difference] = [body_item[difference] for body_item in body_items]
+                        body_by_primary_key[primary_key] = [item]
+                    else:
+                        raise Exception('duplicate object for key')
+
+                # at this point it should be one item
+                for field_name in multi_field:
+                    if not type(body_by_primary_key[primary_key][0][field_name]) is list:
+                        body_by_primary_key[primary_key][0][field_name] = [body_by_primary_key[primary_key][0][field_name]]
+
+            body = [body_by_primary_key[primary_key][0] for primary_key in body_by_primary_key]
+
+            if is_single_result:
+                if len(body) == 0:
+                    if empty_is_error:
+                        raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+                    body = {}
+                elif len(body) == 1:
+                    body = body[0]
+                else:
+                    raise Exception('duplicate object for key')
+
+
+            return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=fields,
+                                        count=total_items, using_cache=False, cache_key=cache_key, optimized_serialize=True)
+        else:
+            # evaluate the query
+            body = list(obj)
+            if is_single_result:
+                if len(body) == 0:
+                    if empty_is_error:
+                        raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+                    body = {}
+                elif len(body) == 1:
+                    body = body[0]
+                else:
+                    raise Exception('duplicate object for key')
+
+            return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
+                                                count=total_items, using_cache=False, cache_key=cache_key)
 
     def get_obj_from_linked_objects(self, pk, parent_resource, parent_pk):
         # find the resource that this request is looking for
         for linked_object in self.linked_objects:
             if linked_object['parent_resource'] == parent_resource:
-                if linked_object['parent_cls']:
-                    # get the resource
-                    parent_obj = linked_object['parent_cls'].objects.using(self.read_db).get(pk=parent_pk)
-                else:
-                    parent_obj = parent_pk
                 # setup kwargs for django's orm to query
-                kwargs = {
-                    linked_object['parent_name']: parent_obj
-                }
+                if linked_object['parent_cls']:
+                    if not linked_object['linking_cls']:
+                        field = self.model._meta.get_field(linked_object['parent_name'])
+                        if hasattr(field, 'multiple') and field.multiple:
+                            kwargs = {
+                                linked_object['parent_name']+'__id': parent_pk
+                            }
+                        else:
+                            kwargs = {
+                                linked_object['parent_name']+'_id': parent_pk
+                            }
+                    else:
+                        kwargs = {
+                            linked_object['parent_name']+'_id': parent_pk
+                        }
+                else:
+                    kwargs = {
+                        linked_object['parent_name']: parent_pk
+                    }
 
                 # if there is a linking table do that logic
                 if linked_object['linking_cls']:
@@ -303,7 +454,7 @@ class SimplifyView(APIView):
                         except self.DoesNotExist:
                             raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
                         else:
-                            return self.model.objects.using(read_db).get(pk=pk)
+                            return self.model.objects.using(read_db).filter(pk=pk)
 
                     else:
                         # get the linking table items
@@ -318,7 +469,7 @@ class SimplifyView(APIView):
                     # if we have a pk we only want the exact resource we are looking for
                     if pk:
                         kwargs['pk'] = pk
-                        return self.model.objects.using(self.read_db).get(**kwargs)
+                        return self.model.objects.using(self.read_db).filter(**kwargs)
                     # no pk was passed in meaning we are getting the entire list of items that match the parent resource
                     else:
                         return self.model.objects.using(self.read_db).filter(**kwargs)
@@ -435,7 +586,7 @@ class SimplifyView(APIView):
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
 
-    def create_response(self, body=None, response_status=None, error_message=None, content_type='application/json', serialize=False, exclude=[], include=[], fields=[], count=None, using_cache=False, cache_key=None):
+    def create_response(self, body=None, response_status=None, error_message=None, content_type='application/json', serialize=False, exclude=[], include=[], fields=[], count=None, using_cache=False, cache_key=None, optimized_serialize=False):
         if using_cache:
             response = Response(body, status=status.HTTP_200_OK, content_type=content_type)
             response['Hit'] = 1
@@ -455,8 +606,9 @@ class SimplifyView(APIView):
             if body is None:
                 body = {}
             else:
-                serializer = self.serializer(exclude=exclude, include=include, fields=fields)
-                body = serializer.serialize(body)
+                if not optimized_serialize:
+                    serializer = self.serializer(exclude=exclude, include=include, fields=fields)
+                    body = serializer.serialize(body)
                 body = Mapper.underscore_to_camelcase(body)
                 if count is not None:
                     body = {

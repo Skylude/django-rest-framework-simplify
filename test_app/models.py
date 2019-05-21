@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework_simplify.models import SimplifyModel
@@ -12,6 +13,7 @@ class BasicClass(SimplifyModel):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=15)
     active = models.BooleanField(null=False, default=True)
+    created = models.DateTimeField(null=False, default=timezone.now)
     child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_one')
     child_two = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_two')
     exclude_field = models.CharField(max_length=25, null=True, blank=True)
@@ -42,7 +44,7 @@ class BasicClass(SimplifyModel):
 
     @staticmethod
     def get_includes():
-        return ['child_one__id', 'child_three', 'model_with_sensitive_data']
+        return ['child_one__name', 'child_three', 'model_with_sensitive_data', 'child_one']
 
     @staticmethod
     def get_excludes():
