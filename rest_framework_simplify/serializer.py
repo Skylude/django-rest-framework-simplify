@@ -141,7 +141,6 @@ class SQLEngineSerializer:
 
     def get_fields_by_type(self, model_type):
         if model_type not in memoized_type_mappings:
-            # we can't support many to many field right now...
             all_field_types = [field for field in model_type._meta.get_fields() if not field.auto_created and field.concrete and type(field) is not ManyToManyField]
             all_fields = set((field.name for field in all_field_types))
             foreign_key_fields = set((field.name for field in all_field_types if type(field) in [DjangoForeignKey, OneToOneField]))
@@ -168,9 +167,6 @@ class SQLEngineSerializer:
             if len(obj) == 0:
                 return []
             foreign_key_fields, decimal_fields, binary_fields, all_fields = self.get_fields_by_type(type(obj[0]))
-            # json_data_str = serializers.serialize('json', obj)
-            # plain_dict = json.loads(json_data_str)
-            # model_dict = [self.format_data(item['fields'], item['pk']) for item in plain_dict]
             model_dict = [self.to_dict(model, all_fields, foreign_key_fields) for model in obj]
             if len(model_dict) == 0:
                 return []
@@ -178,21 +174,7 @@ class SQLEngineSerializer:
         # serializers take a query set so if it isn't we need to make it a list
         else:
             foreign_key_fields, decimal_fields, binary_fields, all_fields = self.get_fields_by_type(type(obj))
-
-            # json_data_str = serializers.serialize('json', [obj])
-            # plain_dict = json.loads(json_data_str)
-            # model_dict = plain_dict[0]['fields']
             model_dict = self.to_dict(obj, all_fields, foreign_key_fields)
-            # if obj._meta.pk.attname != 'id':
-            #     model_dict[obj._meta.pk.attname] = plain_dict[0]['pk']
-            # else:
-            #     model_dict['id'] = plain_dict[0]['pk']
-
-
-        # get a list of all foreign keys on this obj
-        # foreign_key_fields = set([field.name for field in cls._meta.get_fields() if type(field) in [DjangoForeignKey, OneToOneField]])
-        # decimal_fields = set([field.name for field in cls._meta.get_fields() if type(field) is DecimalField])
-        # binary_fields = set([field.name for field in cls._meta.get_fields() if type(field) is BinaryField])
 
         if type(model_dict) is list:
             for item in model_dict:
