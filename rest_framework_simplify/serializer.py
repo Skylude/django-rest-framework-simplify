@@ -216,7 +216,7 @@ class SQLEngineSerializer:
                         # binary types we could run into problems as this returns and unencoded string
                         # rather than the actual byte array -- if we need the actual byte array we are
                         # going to need to fix up the serializer
-                        updated_fields[key] = convert_serialized_binary_to_string(item[key])
+                        updated_fields[key] = convert_serialized_binary_to_string(base64.b64encode(item[key]))
                 # setting all updated fields after looping through the keys to avoid changing the item we are looping
                 # through
                 for updated_field in updated_fields.keys():
