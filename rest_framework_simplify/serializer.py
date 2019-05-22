@@ -9,7 +9,7 @@ from django.db.models import BinaryField, QuerySet as DjangoQuerySet, DecimalFie
 from django.db.models.fields.related import ForeignKey as DjangoForeignKey, OneToOneField, ManyToOneRel, ManyToManyField, ManyToManyRel, OneToOneRel
 from mongoengine.queryset import QuerySet
 
-from rest_framework_simplify.helpers import convert_serialized_binary_to_string
+from rest_framework_simplify.helpers import binary_string_to_string
 from rest_framework_simplify.mapper import Mapper
 
 
@@ -139,9 +139,77 @@ class SQLEngineSerializer:
         self.exclude = exclude
         self.fields = fields
 
+    def model_to_dict(self, manager_query_or_model):
+        # if its a related manager field (many to one or many to many) -- get all objs
+        if issubclass(type(manager_query_or_model), Manager):
+            manager_query_or_model = list(manager_query_or_model.all())
+
+        if type(manager_query_or_model) == DjangoQuerySet:
+            manager_query_or_model = list(manager_query_or_model)
+
+        is_single_item = False
+        if type(manager_query_or_model) != list:
+            manager_query_or_model = [manager_query_or_model]
+            is_single_item = True
+
+        if len(manager_query_or_model) == 0:
+            return []
+
+        raw_models = [
+            self.one_model_to_dict(model)
+            for model
+            in manager_query_or_model
+        ]
+
+        if is_single_item:
+            return raw_models[0]
+        else:
+            return raw_models
+
+    def one_model_to_dict(self, model):
+        foreign_key_fields, decimal_fields, binary_fields, all_fields = self.get_fields_by_type(type(model))
+
+        if self.fields:
+            field_names = [
+                field_name
+                for field_name
+                in all_fields
+                if field_name in self.fields 
+                or Mapper.underscore_to_camelcase(field_name) in self.fields
+                or '{}_id'.format(field_name) in self.fields
+                or Mapper.underscore_to_camelcase('{}_id'.format(field_name)) in self.fields
+            ]
+        else:
+            field_names = all_fields
+
+        raw_model = {}
+
+        for field_name in field_names:
+            if field_name in foreign_key_fields:
+                id_key = '{}_id'.format(field_name)
+                raw_model[id_key] = getattr(model, id_key)
+            else:
+                raw_attribute = getattr(model, field_name)
+                if field_name in decimal_fields and raw_attribute is not None:
+                    raw_model[field_name] = float(raw_attribute)
+                elif field_name in binary_fields and raw_attribute is not None:
+                    # this is a bad solution as we get more
+                    # binary types we could run into problems as this returns and unencoded string
+                    # rather than the actual byte array -- if we need the actual byte array we are
+                    # going to need to fix up the serializer
+                    raw_model[field_name] = binary_string_to_string(bytes(raw_attribute))
+                else:
+                    raw_model[field_name] = raw_attribute
+
+        if hasattr(model, 'get_excludes'):
+            for exclude in model.get_excludes():
+                if exclude in raw_model.keys():
+                    del raw_model[exclude]
+    
+        return raw_model
+
     def get_fields_by_type(self, model_type):
         if model_type not in memoized_type_mappings:
-            # we can't support many to many field right now...
             all_field_types = [field for field in model_type._meta.get_fields() if not field.auto_created and field.concrete and type(field) is not ManyToManyField]
             all_fields = set((field.name for field in all_field_types))
             foreign_key_fields = set((field.name for field in all_field_types if type(field) in [DjangoForeignKey, OneToOneField]))
@@ -150,142 +218,6 @@ class SQLEngineSerializer:
             memoized_type_mappings[model_type] = (foreign_key_fields, decimal_fields, binary_fields, all_fields)
 
         return memoized_type_mappings[model_type]
-
-    def to_dict(self, model_instance, field_names, foreign_key_fields):
-        return {
-            key: getattr(model_instance, '{}_id'.format(key)) if key in foreign_key_fields else getattr(model_instance, key)
-            for key in 
-            field_names
-        }
-
-    def model_to_dict(self, obj):
-        # if its a related manager field (many to one or many to many) -- get all objs
-
-        if issubclass(type(obj), Manager):
-            obj = list(obj.all())
-
-        if type(obj) == DjangoQuerySet or type(obj) == list:
-            if len(obj) == 0:
-                return []
-            foreign_key_fields, decimal_fields, binary_fields, all_fields = self.get_fields_by_type(type(obj[0]))
-            # json_data_str = serializers.serialize('json', obj)
-            # plain_dict = json.loads(json_data_str)
-            # model_dict = [self.format_data(item['fields'], item['pk']) for item in plain_dict]
-            model_dict = [self.to_dict(model, all_fields, foreign_key_fields) for model in obj]
-            if len(model_dict) == 0:
-                return []
-
-        # serializers take a query set so if it isn't we need to make it a list
-        else:
-            foreign_key_fields, decimal_fields, binary_fields, all_fields = self.get_fields_by_type(type(obj))
-
-            # json_data_str = serializers.serialize('json', [obj])
-            # plain_dict = json.loads(json_data_str)
-            # model_dict = plain_dict[0]['fields']
-            model_dict = self.to_dict(obj, all_fields, foreign_key_fields)
-            # if obj._meta.pk.attname != 'id':
-            #     model_dict[obj._meta.pk.attname] = plain_dict[0]['pk']
-            # else:
-            #     model_dict['id'] = plain_dict[0]['pk']
-
-
-        # get a list of all foreign keys on this obj
-        # foreign_key_fields = set([field.name for field in cls._meta.get_fields() if type(field) in [DjangoForeignKey, OneToOneField]])
-        # decimal_fields = set([field.name for field in cls._meta.get_fields() if type(field) is DecimalField])
-        # binary_fields = set([field.name for field in cls._meta.get_fields() if type(field) is BinaryField])
-
-        if type(model_dict) is list:
-            for item in model_dict:
-                updated_fields = {}
-                fields_to_remove = []
-                for key in item.keys():
-                    if key in foreign_key_fields:
-                        # get current value -- should be an id
-                        value = item[key]
-                        # create new field with appended _id
-                        field_with_id = key + '_id'
-                        # set new id field
-                        updated_fields[field_with_id] = value
-                        #remove field from dict
-                        fields_to_remove.append(key)
-                    if key in decimal_fields and item[key] is not None:
-                        updated_fields[key] = float(item[key])
-                    if key in binary_fields and item[key] is not None:
-                        # this is because the serializer is serializing from the db and adding on
-                        # bytearray(b\ and also )' onto the end. this is a bad solution as we get more
-                        # binary types we could run into problems as this returns and unencoded string
-                        # rather than the actual byte array -- if we need the actual byte array we are
-                        # going to need to fix up the serializer
-                        updated_fields[key] = convert_serialized_binary_to_string(item[key])
-                # setting all updated fields after looping through the keys to avoid changing the item we are looping
-                # through
-                for updated_field in updated_fields.keys():
-                    item[updated_field] = updated_fields[updated_field]
-
-                # remove all fields that we don't need after iterating through the items
-                [item.pop(field_to_remove, None) for field_to_remove in fields_to_remove]
-
-        else:
-            updated_fields = {}
-            fields_to_remove = []
-            for key in model_dict.keys():
-                if key in foreign_key_fields:
-                    # get current value -- should be an id
-                    value = model_dict[key]
-                    # create new field with appended _id
-                    field_with_id = key + '_id'
-                    # set new id field
-                    updated_fields[field_with_id] = value
-                    # remove field from dict
-                    fields_to_remove.append(key)
-                if key in decimal_fields and model_dict[key] is not None:
-                    updated_fields[key] = float(model_dict[key])
-                if key in binary_fields and model_dict[key] is not None:
-                    # this is because the serializer is serializing from the db and adding on
-                    # bytearray(b\ and also )' onto the end. this is a bad solution as we get more
-                    # binary types we could run into problems as this returns and unencoded string
-                    # rather than the actual byte array -- if we need the actual byte array we are
-                    # going to need to fix up the serializer
-                    updated_fields[key] = convert_serialized_binary_to_string(base64.b64encode(model_dict[key]))
-
-            # setting all updated fields after looping through the keys to avoid changing the item we are looping
-            # through
-            for updated_field in updated_fields.keys():
-                model_dict[updated_field] = updated_fields[updated_field]
-
-            # remove all fields that we don't need after iterating through the items
-            [model_dict.pop(field_to_remove, None) for field_to_remove in fields_to_remove]
-
-        if hasattr(obj, 'get_excludes'):
-            excludes = obj.get_excludes()
-            if type(model_dict) is list:
-                for item in model_dict:
-                    for exclude in excludes:
-                        if exclude in item.keys():
-                            del item[exclude]
-            else:
-                for exclude in excludes:
-                    if exclude in model_dict.keys():
-                        del model_dict[exclude]
-
-        if self.fields:
-            if type(model_dict) is list:
-                pruned_model_dicts = []
-                for item in model_dict:
-                    pruned_model_dict = {}
-                    for key in item.keys():
-                        if key in self.fields or Mapper.underscore_to_camelcase(key) in self.fields:
-                            pruned_model_dict[key] = item[key]
-                    pruned_model_dicts.append(pruned_model_dict)
-                return pruned_model_dict
-            else:
-                pruned_model_dict = {}
-                for key in model_dict.keys():
-                    if key in self.fields or Mapper.underscore_to_camelcase(key) in self.fields:
-                        pruned_model_dict[key] = model_dict[key]
-                return pruned_model_dict
-        else:
-            return model_dict
 
     def serialize(self, obj):
         if type(obj) == DjangoQuerySet or type(obj) == list:

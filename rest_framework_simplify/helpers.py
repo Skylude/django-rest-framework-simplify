@@ -17,10 +17,11 @@ def convert_tz_to_utc(d, tz):
 
 def convert_serialized_binary_to_string(serialized_binary_data):
     binary_str = base64.b64decode(serialized_binary_data)
-    binary_str = binary_str.decode('utf-8', errors='ignore')
-    # strip out \r\n
-    binary_str_stripped_newlines = binary_str.replace('\\n', ' ').replace('\\r', '')
-    return binary_str_stripped_newlines
+    return binary_string_to_string(binary_str)
+
+
+def binary_string_to_string(binary_str):
+    return binary_str.decode('utf-8', errors='ignore').replace('\\n', ' ').replace('\\r', '')
 
 
 def generate_str(str_length):
