@@ -115,36 +115,6 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(result.data['id'], basic_class.id)
 
-    def test_get_list_large(self):
-        # arrange
-        BasicClass.objects.bulk_create([BasicClass() for x in range(0, 10000)])
-
-        url = '/basicClass'
-
-        # act
-        result = self.api_client.get(url, format='json')
-
-        BasicClass.objects.all().delete()
-
-        # assert
-        self.assertEqual(result.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(result.data), 10000)
-
-    def test_get_filter_large(self):
-        # arrange
-        BasicClass.objects.bulk_create([BasicClass() for x in range(0, 10000)])
-
-        url = '/basicClass?fields=id,name'
-
-        # act
-        result = self.api_client.get(url, format='json')
-
-        BasicClass.objects.all().delete()
-
-        # assert
-        self.assertEqual(result.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(result.data), 10000)
-
     def test_get_meta(self):
         # arrange
         meta_data_class = DataGenerator.set_up_meta_data_class()

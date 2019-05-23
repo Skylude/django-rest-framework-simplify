@@ -14,6 +14,7 @@ from rest_framework import status
 from mongoengine.errors import DoesNotExist
 
 from rest_framework_simplify.exceptions import ParseException
+from rest_framework_simplify.helpers import binary_string_to_string
 from rest_framework_simplify.mapper import Mapper
 from rest_framework_simplify.serializer import MongoEngineSerializer, SQLEngineSerializer
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
@@ -389,6 +390,11 @@ class SimplifyView(APIView):
                         body_by_primary_key[primary_key][0][field_name] = [body_by_primary_key[primary_key][0][field_name]]
 
             body = [body_by_primary_key[primary_key][0] for primary_key in body_by_primary_key]
+
+            for item in body:
+                for key in item:
+                    if type(item[key]) is memoryview:
+                        item[key] = binary_string_to_string(bytes(item[key]))
 
             if is_single_result:
                 if len(body) == 0:

@@ -14,6 +14,7 @@ class BasicClass(SimplifyModel):
     name = models.CharField(max_length=15)
     active = models.BooleanField(null=False, default=True)
     created = models.DateTimeField(null=False, default=timezone.now)
+    binary_field = models.BinaryField(null=True, blank=True, default=bytes('binarystring', 'utf-8'))
     child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_one')
     child_two = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_two')
     exclude_field = models.CharField(max_length=25, null=True, blank=True)
