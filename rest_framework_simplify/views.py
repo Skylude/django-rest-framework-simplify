@@ -351,18 +351,19 @@ class SimplifyView(APIView):
                 body_items = body_by_primary_key[primary_key]
 
                 # process full includes
-                for body_item in body_items:
-                    for include_field in full_includes:
-                        field_names = [field for field in body_item if include_field + '__' in field]
-                        field_names_to_remove = [field for field in field_names if field not in include]
+                if full_includes:
+                    for body_item in body_items:
+                        for include_field in full_includes:
+                            field_names = [field for field in body_item if include_field + '__' in field]
+                            field_names_to_remove = [field for field in field_names if field not in include]
 
-                        body_item[include_field] = {
-                            field_name.replace(include_field + "__", ''):body_item[field_name]
-                            for field_name in field_names
-                        }
+                            body_item[include_field] = {
+                                field_name.replace(include_field + "__", ''):body_item[field_name]
+                                for field_name in field_names
+                            }
 
-                        for field_name in field_names_to_remove:
-                            del body_item[field_name]
+                            for field_name in field_names_to_remove:
+                                del body_item[field_name]
 
                 # handle possible many to many relationships
                 if len(body_items) > 1:
@@ -425,6 +426,19 @@ class SimplifyView(APIView):
             return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
                                                 count=total_items, using_cache=False, cache_key=cache_key)
 
+    def get_field_nested(self, field_long_name):
+        tree = field_long_name.split('__')
+        if len(tree) == 1:
+            return self.model._meta.get_field(tree[0])
+        
+        current_class = self.model
+        field = None
+        for field_name in tree:
+            field = current_class._meta.get_field(field_name)
+            if hasattr(field, 'related_model'):
+                current_class = field.related_model
+        return field
+
     def get_obj_from_linked_objects(self, pk, parent_resource, parent_pk):
         # find the resource that this request is looking for
         for linked_object in self.linked_objects:
@@ -432,14 +446,19 @@ class SimplifyView(APIView):
                 # setup kwargs for django's orm to query
                 if linked_object['parent_cls']:
                     if not linked_object['linking_cls']:
-                        field = self.model._meta.get_field(linked_object['parent_name'])
+                        if linked_object['parent_name'][-3:] == '_id':
+                            parent_field_name = linked_object['parent_name'][:-3]
+                        else:
+                            parent_field_name = linked_object['parent_name']
+
+                        field = self.get_field_nested(parent_field_name)
                         if hasattr(field, 'multiple') and field.multiple:
                             kwargs = {
-                                linked_object['parent_name']+'__id': parent_pk
+                                parent_field_name+'__id': parent_pk
                             }
                         else:
                             kwargs = {
-                                linked_object['parent_name']+'_id': parent_pk
+                                parent_field_name+'_id': parent_pk
                             }
                     else:
                         kwargs = {
@@ -615,7 +634,7 @@ class SimplifyView(APIView):
                 if not optimized_serialize:
                     serializer = self.serializer(exclude=exclude, include=include, fields=fields)
                     body = serializer.serialize(body)
-                body = Mapper.underscore_to_camelcase(body)
+                body = Mapper.dict_underscore_to_camelcase(body)
                 if count is not None:
                     body = {
                         'count': count,

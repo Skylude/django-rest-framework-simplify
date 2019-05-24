@@ -175,9 +175,9 @@ class SQLEngineSerializer:
                 for field_name
                 in all_fields
                 if field_name in self.fields 
-                or Mapper.underscore_to_camelcase(field_name) in self.fields
+                or Mapper.string_underscore_to_camelcase(field_name) in self.fields
                 or '{}_id'.format(field_name) in self.fields
-                or Mapper.underscore_to_camelcase('{}_id'.format(field_name)) in self.fields
+                or Mapper.string_underscore_to_camelcase('{}_id'.format(field_name)) in self.fields
             ]
         else:
             field_names = all_fields
