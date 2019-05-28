@@ -23,6 +23,13 @@ class MapperTests(unittest.TestCase):
         val = Mapper.underscore_to_camelcase(underscore)
         self.assertEqual(val, camel_case)
 
+    # I know this is horrible, but we have api's relying on this bug and we cannot fix it safely
+    def test_underscore_to_backwards_compatible(self):
+        underscore = 'address_line_1'
+        camel_case = 'addressLine_1'
+        val = Mapper.underscore_to_camelcase(underscore)
+        self.assertEqual(val, camel_case)
+
     def test_underscore_to_camelcase_embedded(self):
         underscore = [{'camel_case': [{'more_camel_case': 5}]}]
         camel_case = [{'camelCase': [{'moreCamelCase': 5}]}]

@@ -13,12 +13,20 @@ class Mapper:
         else:
             return re.sub('(((?<=[a-z])[A-Z])|([A-Z](?![A-Z]|$)))', '_\\1', camel_case).lower().strip('_')
 
+
     @staticmethod
     def underscore_to_camelcase(underscore):
         if isinstance(underscore, dict) or isinstance(underscore, list):
             return Mapper.dict_underscore_to_camelcase(underscore)
         else:
+            return Mapper.string_underscore_to_camelcase(underscore)
+
+    @staticmethod
+    def string_underscore_to_camelcase(underscore):
+        if '_' in underscore:
             return re.sub(r'(?!^)_([a-zA-Z])', lambda m: m.group(1).upper(), underscore)
+        else:
+            return underscore
 
     @staticmethod
     def underscore_to_titlecase(underscore):
@@ -75,27 +83,15 @@ class Mapper:
     @staticmethod
     def dict_underscore_to_camelcase(obj):
         if isinstance(obj, dict):
-            new_dict = {}
-            for key, value in obj.items():
-                camelcase = Mapper.underscore_to_camelcase(key)
-                if isinstance(value, dict) or isinstance(value, list):
-                    value = Mapper.underscore_to_camelcase(value)
-                new_dict[camelcase] = value
-            return new_dict
-        elif isinstance(obj, list):
-            new_list = []
-            for o in obj:
-                new_dict = {}
-                if isinstance(o, list) or isinstance(o, dict):
-                    for key, value in o.items():
-                        camelcase = Mapper.underscore_to_camelcase(key)
-                        if isinstance(value, dict) or isinstance(value, list):
-                            value = Mapper.underscore_to_camelcase(value)
-                        new_dict[camelcase] = value
-                    new_list.append(new_dict)
-                else:
-                    new_list.append(o)
-            return new_list
+            return {
+                Mapper.string_underscore_to_camelcase(key) : Mapper.dict_underscore_to_camelcase(value)
+                for key, value in obj.items()
+            }
+
+        if isinstance(obj, list):
+            return [Mapper.dict_underscore_to_camelcase(x) for x in obj] 
+
+        return obj
 
     @staticmethod
     def dict_underscore_to_titlecase(obj):
