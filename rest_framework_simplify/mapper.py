@@ -19,13 +19,12 @@ class Mapper:
         if isinstance(underscore, dict) or isinstance(underscore, list):
             return Mapper.dict_underscore_to_camelcase(underscore)
         else:
-            # inlined for speed
-            return ('A' + underscore.replace('_', ' ')).title().replace(' ', '')[1:] if '_' in underscore else underscore
+            return Mapper.string_underscore_to_camelcase(underscore)
 
     @staticmethod
     def string_underscore_to_camelcase(underscore):
         if '_' in underscore:
-            return ('A' + underscore.replace('_', ' ')).title().replace(' ', '')[1:]
+            return re.sub(r'(?!^)_([a-zA-Z])', lambda m: m.group(1).upper(), underscore)
         else:
             return underscore
 
@@ -85,9 +84,7 @@ class Mapper:
     def dict_underscore_to_camelcase(obj):
         if isinstance(obj, dict):
             return {
-                # inlined for speed (please keep this, it is much faster than regex or a function call under large loads)
-                ('A' + key.replace('_', ' ')).title().replace(' ', '')[1:] if '_' in key else key:
-                Mapper.dict_underscore_to_camelcase(value)
+                Mapper.string_underscore_to_camelcase(key) : Mapper.dict_underscore_to_camelcase(value)
                 for key, value in obj.items()
             }
 

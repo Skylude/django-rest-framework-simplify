@@ -136,6 +136,7 @@ class SimplifyView(APIView):
                     child_id = linked_object['parent_cls'].objects.using(self.read_db).values(child_id_field_name).get(pk=parent_pk)[child_id_field_name]
                     obj = self.model.objects.using(self.read_db).filter(pk=child_id)
                     is_single_result = True
+                    # there is no empty_is_error here to preserve legacy behavior of empty object in this specific case
                 else:
                     # check if this method has authorized sub resources
                     if 'GET_LIST_SUB' not in self.supported_methods:
@@ -144,6 +145,7 @@ class SimplifyView(APIView):
                     obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
                     if pk is not None:
                         is_single_result = True
+                        empty_is_error = True
 
             else:
                 # trying to get ALL items in DB
@@ -191,7 +193,6 @@ class SimplifyView(APIView):
 
         if simple and len(req_fields) == 0:
             fields = [field.attname for field in self.model._meta.get_fields() if not field.auto_created and field.concrete]
-            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
 
         full_includes = []
         multi_field = []
@@ -473,13 +474,11 @@ class SimplifyView(APIView):
                 if linked_object['linking_cls']:
                     # we have pk so we only need to check if the one linker exists
                     if pk:
-                        try:
                             kwargs[linked_object['sub_resource_name']] = pk
-                            linked_obj = linked_object['linking_cls'].objects.using(self.read_db).get(**kwargs)
-                        except self.DoesNotExist:
-                            raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
-                        else:
-                            return self.model.objects.using(read_db).filter(pk=pk)
+                            if linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs).exists():
+                                return self.model.objects.using(read_db).filter(pk=pk)
+                            else:
+                                raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
                     else:
                         # get the linking table items
