@@ -376,13 +376,13 @@ class SimplifyView(APIView):
                 if len(body_items) > 1:
                     keys = [key for key in body_items[0]]
                     checked_values = {}
-                    differences = []
+                    differences = set()
                     for item in body_items:
                         for key in keys:
                             if key not in checked_values:
                                 checked_values[key] = item[key]
                             if checked_values[key] != item[key]:
-                                differences.append(key)
+                                differences.add(key)
 
                     if len(differences) > 0:
                         item = body_items[0]
