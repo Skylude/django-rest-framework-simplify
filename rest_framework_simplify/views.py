@@ -363,6 +363,12 @@ class SimplifyView(APIView):
                                 for field_name in field_names
                             }
 
+                            if all (val == None for val in body_item[include_field].values()):
+                                if include_field in multi_field:
+                                    body_item[include_field] = []
+                                else:
+                                    body_item[include_field] = None
+
                             for field_name in field_names_to_remove:
                                 del body_item[field_name]
 
