@@ -387,7 +387,17 @@ class SimplifyView(APIView):
                     if len(differences) > 0:
                         item = body_items[0]
                         for difference in differences:
-                            item[difference] = [body_item[difference] for body_item in body_items]
+                            all_items = [body_item[difference] for body_item in body_items]
+                            if all (type(item) is dict for item in all_items):
+                                # a little uniquefying magic, courtesy of stack overflow https://stackoverflow.com/a/7090833
+                                item[difference] = [
+                                    dict(tupleized) 
+                                    for tupleized in 
+                                    set(tuple(item.items())
+                                    for item in all_items)
+                                ]
+                            else:
+                                item[difference] = all_items
                         body_by_primary_key[primary_key] = [item]
                     else:
                         raise Exception('duplicate object for key')
@@ -403,6 +413,8 @@ class SimplifyView(APIView):
                 for key in item:
                     if type(item[key]) is memoryview:
                         item[key] = binary_string_to_string(bytes(item[key]))
+                    elif type(item[key]) is bytes:
+                        item[key] = binary_string_to_string(item[key])
 
             if is_single_result:
                 if len(body) == 0:
