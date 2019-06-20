@@ -311,7 +311,13 @@ class SimplifyView(APIView):
         # handle paging Mr. Herman
         page = request.query_params.get('page', None)
         page_size = request.query_params.get('pageSize', None)
+        count_only = request.query_params.get('countOnly', None)
         total_items = None
+        if count_only or (page_size and int(page_size) == 0):
+            total_items = obj.using(self.read_db).count()
+            return self.create_response(body=[], serialize=True, include=None, exclude=None, fields=None,
+                                        count=total_items, using_cache=False, cache_key=None, optimized_serialize=True)
+
         if page and page_size:
             # todo: if they didnt pass in an order_by and there is paging use default models paging if that doesnt
             # todo: exist use id -- if that doesnt exist dont order
@@ -410,11 +416,7 @@ class SimplifyView(APIView):
             body = [body_by_primary_key[primary_key][0] for primary_key in body_by_primary_key]
 
             for item in body:
-                for key in item:
-                    if type(item[key]) is memoryview:
-                        item[key] = binary_string_to_string(bytes(item[key]))
-                    elif type(item[key]) is bytes:
-                        item[key] = binary_string_to_string(item[key])
+                self.handle_bytes_decoding(item)
 
             if is_single_result:
                 if len(body) == 0:
@@ -444,6 +446,16 @@ class SimplifyView(APIView):
 
             return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
                                                 count=total_items, using_cache=False, cache_key=cache_key)
+
+    @classmethod
+    def handle_bytes_decoding(cls, item):
+            for key in item:
+                if type(item[key]) is dict:
+                    cls.handle_bytes_decoding(item[key])
+                if type(item[key]) is memoryview:
+                    item[key] = binary_string_to_string(bytes(item[key]))
+                elif type(item[key]) is bytes:
+                    item[key] = binary_string_to_string(item[key])
 
     def get_field_nested(self, field_long_name):
         tree = field_long_name.split('__')
