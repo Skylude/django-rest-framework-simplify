@@ -93,13 +93,3 @@ class CustomFieldTests(unittest.TestCase):
             jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
 
             self.assertIsNone(jt_return.json_text)
-
-        @skip('it requires a malformed python object, which is hard to produce')
-        def test_json_text_field_throws_error_when_loading_malformed_json_value(self):
-            malformed_json_text = '|||||[{ "description\': "isn\'t it beautiful outside?" }]'
-
-            # act / assert
-            with self.assertRaises(ValidationError) as ex:
-                jt_class = DataGenerator.set_up_json_text_field_class(
-                    json_text=malformed_json_text)
-                jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
