@@ -1,9 +1,11 @@
+import json
+
 from Crypto.Cipher import AES
 from Crypto import Random
 import base64
 
 from django.conf import settings
-from django.core.exceptions import FieldError, ImproperlyConfigured
+from django.core.exceptions import FieldError, ImproperlyConfigured, ValidationError
 from django.db import models
 from django.utils.encoding import force_bytes, force_text
 from django.utils.functional import cached_property
@@ -87,3 +89,34 @@ class SimplifyEncryptedCharField(SimplifyEncryptedField):
             self.display_chars = kwargs.get('display_chars')
 
         super(SimplifyEncryptedCharField, self).__init__(*args, **kwargs)
+
+
+class SimplifyJsonTextField(models.TextField):
+
+    def __init__(self, *args, **kwargs):
+        super(models.TextField, self).__init__(*args, **kwargs)
+
+    def from_db_value(self, value, expression, connection, context):
+        if value is None:
+            return value
+
+        try:
+            new_value = json.loads(value)
+        except Exception as e:
+            raise ValidationError("Invalid output for JsonTextField instance")
+
+        return new_value
+
+    def to_python(self, value):
+        if isinstance(value, SimplifyJsonTextField):
+            return value
+
+        if value is None:
+            return value
+
+        try:
+            new_value = json.dumps(value)
+        except Exception as e:
+            raise ValidationError("Invalid input for JsonTextField instance")
+
+        return new_value
