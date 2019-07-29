@@ -137,7 +137,7 @@ class CustomFieldTests(unittest.TestCase):
             # assert
             self.assertIsNone(jt_return.json_text)
 
-        def test_json_text_field_returns_string_when_json_in_database_is_malformed(self):
+        def test_json_text_field_throws_error_when_json_in_database_is_malformed(self):
             # arrange
             json_text_in_db = '[{ \'description\':: \'isn\'t it beautiful outside?\' }]'
 
