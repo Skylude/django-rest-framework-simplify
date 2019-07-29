@@ -1,4 +1,4 @@
-### 7/29/2019 - 1.3.14
+### 7/29/2019 1.3.14
 Added `SimplifyJsonTextField` custom Django field which allows a non-json compatible database to handle json responsibly
 
 ### 12/18/2018 1.3.1
