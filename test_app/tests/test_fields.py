@@ -1,4 +1,5 @@
 import json
+from typing import List
 from unittest import skip
 from unittest.mock import patch
 
@@ -7,7 +8,6 @@ import os
 import unittest
 
 from django.core.exceptions import ValidationError
-from psycopg2._psycopg import List
 
 from rest_framework_simplify.fields import SimplifyJsonTextField
 
@@ -85,7 +85,7 @@ class CustomFieldTests(unittest.TestCase):
 
         def test_json_text_field_returns_json_value_as_list(self):
             # arrange
-            json_text = json.loads('{ "description": "isn\'t it beautiful outside?" }')
+            json_text = json.loads('[{ "description": "isn\'t it beautiful outside?" }]')
             jt_class = DataGenerator.set_up_json_text_field_class(
                 json_text=json_text)
 
@@ -94,7 +94,7 @@ class CustomFieldTests(unittest.TestCase):
 
             # assert
             self.assertIsNotNone(jt_return)
-            self.assertTrue(jt_return.json_text, List)
+            self.assertTrue(isinstance(jt_return.json_text, List))
 
         def test_json_text_field_returns_json_value_as_object(self):
             # arrange
@@ -107,7 +107,7 @@ class CustomFieldTests(unittest.TestCase):
 
             # assert
             self.assertIsNotNone(jt_return)
-            self.assertTrue(jt_return.json_text, dict)
+            self.assertTrue(isinstance(jt_return.json_text, dict))
 
         def test_json_text_field_returns_json_value_as_none(self):
             # arrange
