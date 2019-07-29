@@ -1,3 +1,6 @@
+### 7/29/2019 1.3.16
+Fixed `SimplifyJsonTextField` custom Django field to prevent json.dumping() value more than once
+
 ### 7/29/2019 1.3.14
 Added `SimplifyJsonTextField` custom Django field which allows a non-json compatible database to handle json responsibly
 
