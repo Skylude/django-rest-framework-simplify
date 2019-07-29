@@ -103,7 +103,7 @@ class SimplifyJsonTextField(models.TextField):
         try:
             new_value = json.loads(value)
         except Exception as e:
-            raise ValidationError("Invalid output for JsonTextField instance")
+            raise ValidationError("Invalid db value for SimplifyJsonTextField instance")
 
         return new_value
 
@@ -117,6 +117,6 @@ class SimplifyJsonTextField(models.TextField):
         try:
             new_value = json.dumps(value)
         except Exception as e:
-            raise ValidationError("Invalid input for JsonTextField instance")
+            raise ValidationError("Invalid python value for SimplifyJsonTextField instance")
 
         return new_value
