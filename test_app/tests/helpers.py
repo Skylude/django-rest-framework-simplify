@@ -31,6 +31,13 @@ class DataGenerator:
         return child_class
 
     @staticmethod
+    def set_up_json_text_field_class(json_text=None):
+        j_class = JsonTextFieldClass(json_text=json_text)
+        j_class.save()
+
+        return j_class
+
+    @staticmethod
     def set_up_encrypted_class(value=None):
         if not value:
             value = str(uuid.uuid4())[:9]

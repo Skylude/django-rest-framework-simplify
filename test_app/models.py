@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework_simplify.models import SimplifyModel
-from rest_framework_simplify.fields import SimplifyEncryptedCharField
+from rest_framework_simplify.fields import SimplifyEncryptedCharField, SimplifyJsonTextField
 
 
 class BasicClass(SimplifyModel):
@@ -86,6 +86,11 @@ class EncryptedClass(SimplifyModel):
 class EncryptedClassNoDisplayChars(SimplifyModel):
     id = models.AutoField(primary_key=True)
     encrypted_val = SimplifyEncryptedCharField()
+
+
+class JsonTextFieldClass(SimplifyModel):
+    id = models.AutoField(primary_key=True)
+    json_text = SimplifyJsonTextField(null=True, blank=True)
 
 
 class OneToOneClass(SimplifyModel):
