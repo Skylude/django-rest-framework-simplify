@@ -93,6 +93,10 @@ class SimplifyEncryptedCharField(SimplifyEncryptedField):
 
 class SimplifyJsonTextField(models.TextField):
 
+    class ErrorMessages:
+        INVALID_DB_VALUE = 'Invalid db value for SimplifyJsonTextField instance: {0}'
+        INVALID_PYTHON_VALUE = 'Invalid python value for SimplifyJsonTextField instance: {0}'
+
     def __init__(self, *args, **kwargs):
         super(models.TextField, self).__init__(*args, **kwargs)
 
@@ -103,12 +107,13 @@ class SimplifyJsonTextField(models.TextField):
         try:
             new_value = json.loads(value)
         except Exception as e:
-            raise ValidationError("Invalid db value for SimplifyJsonTextField instance")
+            raise ValidationError(SimplifyJsonTextField.ErrorMessages.INVALID_DB_VALUE
+                                  .format(str(value)))
 
         return new_value
 
     def to_python(self, value):
-        if isinstance(value, SimplifyJsonTextField):
+        if isinstance(value, str):
             return value
 
         if value is None:
@@ -117,6 +122,7 @@ class SimplifyJsonTextField(models.TextField):
         try:
             new_value = json.dumps(value)
         except Exception as e:
-            raise ValidationError("Invalid python value for SimplifyJsonTextField instance")
+            raise ValidationError(SimplifyJsonTextField.ErrorMessages.INVALID_PYTHON_VALUE
+                                  .format(str(value)))
 
         return new_value

@@ -96,6 +96,22 @@ class CustomFieldTests(unittest.TestCase):
             self.assertIsNotNone(jt_return)
             self.assertTrue(isinstance(jt_return.json_text, List))
 
+        def test_json_text_field_returns_json_value_as_list_when_to_python_called_twice(self):
+            # arrange
+            json_text = [{ "description": "isn\'t it beautiful outside?" }]
+            jt_class = DataGenerator.set_up_json_text_field_class(
+                json_text=json_text)
+
+            jt_class.json_text = json.dumps(json_text)
+            jt_class.save()
+
+            # act
+            jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
+
+            # assert
+            self.assertIsNotNone(jt_return)
+            self.assertTrue(isinstance(jt_return.json_text, List))
+
         def test_json_text_field_returns_json_value_as_object(self):
             # arrange
             json_text = json.loads('{ "description": "isn\'t it beautiful outside?" }')
@@ -121,7 +137,7 @@ class CustomFieldTests(unittest.TestCase):
             # assert
             self.assertIsNone(jt_return.json_text)
 
-        def test_json_text_field_returns_string_when_json_in_database_is_malformed(self):
+        def test_json_text_field_throws_error_when_json_in_database_is_malformed(self):
             # arrange
             json_text_in_db = '[{ \'description\':: \'isn\'t it beautiful outside?\' }]'
 
@@ -129,8 +145,8 @@ class CustomFieldTests(unittest.TestCase):
             jt_class = DataGenerator.set_up_json_text_field_class(
                 json_text=json_text_in_db)
 
-            jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
-
-            # assert
-            self.assertIsNotNone(jt_return.json_text)
-            self.assertTrue(isinstance(jt_return.json_text, str))
+            # act / assert
+            with self.assertRaises(ValidationError) as ex:
+                jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
+            self.assertEqual(ex.exception.args[0], SimplifyJsonTextField.
+                             ErrorMessages.INVALID_DB_VALUE.format(json_text_in_db))
