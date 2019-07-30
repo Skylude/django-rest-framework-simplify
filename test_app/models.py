@@ -40,6 +40,14 @@ class BasicClass(SimplifyModel):
             'child_three__id__contains_all': {
                 'type': int,
                 'list': True
+            },
+            'name__icontains': {
+                'type': str,
+                'list': False
+            },
+            'name__revicontains': {
+                'type': str,
+                'list': False
             }
         }
 

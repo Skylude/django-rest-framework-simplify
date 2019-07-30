@@ -1,6 +1,10 @@
 ### 7/29/2019 1.3.16
 Fixed `SimplifyJsonTextField` custom Django field to prevent json.dumping() value more than once
 
+### 7/29/2019 1.3.15
+Added revicontains filter that will allow you to do an icontains but on the passed in filter against a database field. Note: currently does not work with lists
+
+
 ### 7/29/2019 1.3.14
 Added `SimplifyJsonTextField` custom Django field which allows a non-json compatible database to handle json responsibly
 

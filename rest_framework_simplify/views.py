@@ -6,6 +6,7 @@ import traceback
 from decimal import Decimal
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import F, CharField, Value
 from django.db.models.fields.related import ForeignKey, OneToOneField
 from rest_framework import exceptions
 from rest_framework.response import Response
@@ -275,9 +276,22 @@ class SimplifyView(APIView):
                                                                                      model_filters)
                         else:
                             if filterable_property:
-                                filterable_properties.append(self.model.get_filterable_properties()[filter_name]['query'])
+                                filterable_properties.append(
+                                    self.model.get_filterable_properties()[filter_name]['query'])
+                            elif 'revicontains' in filter_name:
+                                # create an annotation that is the field name + _rev and pass that to filter
+                                # with an F function to query each row in the db to see if it contains a substr
+                                # of the passed in filter
+                                field_name = filter_name.split('__')[0]
+                                field_rev = field_name + '_rev'
+                                annotate_kwargs = {
+                                    field_rev: Value(filter_value, output_field=CharField())
+                                }
+                                obj = obj.using(self.read_db).annotate(**annotate_kwargs)
+                                filter_kwargs[field_rev + '__icontains'] = F(field_name)
                             else:
-                                filter_kwargs[filter_name] = self.format_filter(filter_name, filter_value, model_filters)
+                                filter_kwargs[filter_name] = self.format_filter(filter_name,
+                                                                                filter_value, model_filters)
             # narrow down items with the filters
             obj = obj.using(self.read_db).filter(**filter_kwargs)
 

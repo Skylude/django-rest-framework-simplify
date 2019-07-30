@@ -353,6 +353,31 @@ class BasicClassTests(unittest.TestCase):
         # assert
         self.assertEqual(status.HTTP_200_OK, result.status_code)
 
+    def test_get_with_icontains_does_not_work_in_reverse(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClasses?filters=name__icontains={0}'.format(basic_class.name + generate_str(7))
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertEqual(len(result.data), 0)
+
+    def test_get_with_revicontains_matches(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClasses?filters=name__revicontains={0}'.format(basic_class.name + generate_str(7))
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertEqual(len(result.data), 1)
+
+
 
 class ReadReplicaTests(unittest.TestCase):
     api_client = APIClient()
