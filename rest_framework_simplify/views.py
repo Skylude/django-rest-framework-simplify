@@ -326,6 +326,7 @@ class SimplifyView(APIView):
         page = request.query_params.get('page', None)
         page_size = request.query_params.get('pageSize', None)
         count_only = request.query_params.get('countOnly', None)
+        data_only = request.query_params.get('noCount', None)
         total_items = None
         if count_only or (page_size and int(page_size) == 0):
             total_items = obj.using(self.read_db).count()
@@ -336,7 +337,10 @@ class SimplifyView(APIView):
             # todo: if they didnt pass in an order_by and there is paging use default models paging if that doesnt
             # todo: exist use id -- if that doesnt exist dont order
             # need to get total items for response if paging
-            total_items = obj.using(self.read_db).count()
+            if data_only:
+                total_items = -1
+            else:
+                total_items = obj.using(self.read_db).count()
             page = int(page)
             page_size = int(page_size)
             start = (page - 1) * page_size
@@ -680,7 +684,7 @@ class SimplifyView(APIView):
                 body = Mapper.dict_underscore_to_camelcase(body)
                 if count is not None:
                     body = {
-                        'count': count,
+                        'count': count if count != -1 else None,
                         'data': body
                     }
         if cache_key and response_status == status.HTTP_200_OK:

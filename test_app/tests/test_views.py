@@ -154,6 +154,19 @@ class BasicClassTests(unittest.TestCase):
         self.assertGreater(result.data['count'], 2)
         self.assertEqual(len(result.data['data']), 0)
 
+    def test_get_list_no_count(self):
+        # arrange
+        basic_class_1, basic_class_2, basic_class_3 = [DataGenerator.set_up_basic_class() for x in range(3)]
+        url = '/basicClass?page=1&pageSize=3&noCount=true'
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(result.data['count'], None)
+        self.assertGreater(len(result.data['data']), 1)
+
     def test_get_meta(self):
         # arrange
         meta_data_class = DataGenerator.set_up_meta_data_class()
