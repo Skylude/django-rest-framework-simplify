@@ -165,7 +165,7 @@ class BasicClassTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(result.data['count'], None)
-        self.assertGreater(len(result.data['data']), 2)
+        self.assertGreater(len(result.data['data']), 1)
 
     def test_get_meta(self):
         # arrange
