@@ -21,6 +21,8 @@ class BasicClass(SimplifyModel):
     child_three = models.ManyToManyField('ChildClass', null=True, blank=True, related_name='basic_class_three')
     model_with_sensitive_data = models.OneToOneField('ModelWithSensitiveData', null=True, blank=True)
 
+    change_tracking_fields = ['name']
+
     @property
     def test_prop(self):
         return True
