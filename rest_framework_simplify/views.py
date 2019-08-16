@@ -341,7 +341,7 @@ class SimplifyView(APIView):
             if data_only:
                 total_items = -1
             else:
-            total_items = obj.using(self.read_db).count()
+                total_items = obj.using(self.read_db).count()
             page = int(page)
             page_size = int(page_size)
             start = (page - 1) * page_size
