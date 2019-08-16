@@ -3,6 +3,7 @@ import dateutil.parser
 import logging
 import traceback
 
+from collections import OrderedDict 
 from decimal import Decimal
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
@@ -340,7 +341,7 @@ class SimplifyView(APIView):
             if data_only:
                 total_items = -1
             else:
-                total_items = obj.using(self.read_db).count()
+            total_items = obj.using(self.read_db).count()
             page = int(page)
             page_size = int(page_size)
             start = (page - 1) * page_size
@@ -364,7 +365,10 @@ class SimplifyView(APIView):
 
             body = list(obj.values(*fields))
 
-            body_by_primary_key = {}
+            if order_by:
+                body_by_primary_key = OrderedDict()
+            else:
+                body_by_primary_key = {}
             # pk is not always id
             model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
             for body_item in body:
