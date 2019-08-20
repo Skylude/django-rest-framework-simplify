@@ -9,7 +9,7 @@ from rest_framework_simplify.exceptions import ParseException
 os.environ['DJANGO_SETTINGS_MODULE']='test_proj.settings'
 django.setup()
 
-from test_app.models import BasicClass
+from test_app.models import BasicClass, ChildClass
 
 
 class BasicClassParserTests(unittest.TestCase):
@@ -42,17 +42,39 @@ class BasicClassChangeTrackingFieldsTests(unittest.TestCase):
 
     def test_change_tracking_fields_without_changes(self):
         # Arrange
-        basic_class = BasicClass(name='Initial Value')
+        initial_value = str(uuid.uuid4())[:15]
+        basic_class = BasicClass(name=initial_value)
+        basic_class.save()
+        basic_class_db = BasicClass.objects.get(id=basic_class.id)
         # Act
         # Assert
-        self.assertFalse(basic_class.change_tracking_field_has_changed('name'))
-        self.assertEqual(basic_class._name_initial, 'Initial Value')
+        self.assertFalse(basic_class_db.change_tracking_field_has_changed('name'))
+        self.assertEqual(basic_class_db.get_change_tracking_field_initial_value('name'), initial_value)
 
     def test_change_tracking_fields_with_changes(self):
         # Arrange
-        basic_class = BasicClass(name='Initial Value')
+        initial_value = str(uuid.uuid4())[:15]
+        new_value = str(uuid.uuid4())[:15]
+        basic_class = BasicClass(name=initial_value)
+        basic_class.save()
+        basic_class_db = BasicClass.objects.get(id=basic_class.id)
         # Act
-        basic_class.name = 'Then I change it to this'
+        basic_class_db.name = new_value
         # Assert
-        self.assertTrue(basic_class.change_tracking_field_has_changed('name'))
-        self.assertEqual(basic_class._name_initial, 'Initial Value')
+        self.assertTrue(basic_class_db.change_tracking_field_has_changed('name'))
+        self.assertEqual(basic_class_db.get_change_tracking_field_initial_value('name'), initial_value)
+
+    def test_change_tracking_fields_with_changes_of_a_foreign_key(self):
+        # Arrange
+        initial_child_class = ChildClass(name=str(uuid.uuid4())[:15])
+        initial_child_class.save()
+        new_child_class = ChildClass(name=str(uuid.uuid4())[:15])
+        new_child_class.save()
+        basic_class = BasicClass(name=str(uuid.uuid4())[:15], child_one=initial_child_class)
+        basic_class.save()
+        basic_class_db = BasicClass.objects.get(id=basic_class.id)
+        # Act
+        basic_class_db.child_one = new_child_class
+        # Assert
+        self.assertTrue(basic_class_db.change_tracking_field_has_changed('child_one'))
+        self.assertEqual(basic_class_db.get_change_tracking_field_initial_value('child_one'), initial_child_class.id)

@@ -43,6 +43,13 @@ class SimplifyModel(DjangoModel):
         else:
             raise Exception('{0} is not in the change_tracking_fields attribute'.format(field_name))
 
+    def get_change_tracking_field_initial_value(self, field_name):
+        if hasattr(self, 'change_tracking_fields') and field_name in self.change_tracking_fields:
+            field = self._meta.get_field(field_name)
+            return getattr(self, '_{0}_initial'.format(field.attname))
+        else:
+            raise Exception('{0} is not in the change_tracking_fields attribute'.format(field_name))
+
     @classmethod
     def parse(cls, data, existing_id=None, reference_fields=None, current_parse_level=1, request=None):
         """Parses a dictionary into a domain model.
