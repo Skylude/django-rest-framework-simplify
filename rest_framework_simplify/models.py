@@ -185,7 +185,8 @@ class SimplifyModel(DjangoModel):
                 # if we are trying to save a user and its the anonymous one fail
                 if val is AnonymousUser:
                     continue
-                setattr(obj, request_field_to_save[1], val)
+                if getattr(obj, request_field_to_save[1], None) is None:
+                    setattr(obj, request_field_to_save[1], val)
 
         # try to utilize django's full_clean method to ensure the model validates
         try:
