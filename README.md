@@ -18,6 +18,8 @@ CACHES = {
 Django Rest Framework Simplify provides a `SimplifyModel` class, which subclasses Django's `DjangoModel` class. The `SimplifyModel` allows you to have additional properties on your model, for example:
  * `CACHE` (bool) => Specifies if you want to cache the GET request.
  * `CACHE_TIME` (int) => The amount of time you would like this resource to be cached. (This number is in seconds)
+ * `change_tracking_fields` (list) => All of the attributes that you would like to watch for changes (it will save the initial value as _{0}_initial)
+    * ***NOTE***: When you add a foreign key, you will add the property to the list ('child_one' in the example below), but we will store the 'id' (i.e. _child_one_id_initial). You can easily get the initial value by calling get_change_tracking_field_initial_value with the field_name.
  * `get_filters` (method that returns a dict) => This will specify all of the class properties that you can filter your API query on.
  * `get_includes` (method that returns a list) => This will specify all of the related classes that your API can return with your payload.
  * `get_excludes` (method that returns a list) => This will specify all of the properties that you can exclude from an API response.
@@ -37,6 +39,8 @@ class BasicClass(SimplifyModel):
     exclude_field = models.CharField(max_length=25, null=True, blank=True)
     child_three = models.ManyToManyField('ChildClass', null=True, blank=True, related_name='basic_class_three')
     parent_class = models.ForeignKey('ParentClass', null=False, related_name='basic_class')
+
+    change_tracking_fields = ['name', 'child_one']
 
     @property
     def test_prop(self):
