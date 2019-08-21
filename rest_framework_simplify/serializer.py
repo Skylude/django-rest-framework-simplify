@@ -249,8 +249,13 @@ class SQLEngineSerializer:
         for field, related_items in includes.items():
 
             if related_items:
-                if hasattr(obj, field) and getattr(obj, field) is not None:
+                try:
                     related_obj = getattr(obj, field)
+                    related_obj_exists = True
+                except AttributeError:
+                    related_obj_exists = False
+
+                if related_obj_exists and related_obj is not None:
                     if related_obj is not None:
                         view_model[field] = self.serialize_related(related_obj, related_items)
                     else:
@@ -260,8 +265,13 @@ class SQLEngineSerializer:
 
             else:
                 field = Mapper.camelcase_to_underscore(field)
-                if hasattr(obj, field) and getattr(obj, field) is not None:
+                try:
                     related_obj = getattr(obj, field)
+                    related_obj_exists = True
+                except AttributeError:
+                    related_obj_exists = False
+
+                if related_obj_exists and related_obj is not None:
                     if type(related_obj) is list:
                         related_obj_result = []
                         for related_obj_item in related_obj:
