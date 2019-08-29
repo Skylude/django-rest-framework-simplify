@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F, CharField, Value
-from django.db.models.fields.related import ForeignKey, OneToOneField
+from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToOneRel, ManyToManyRel, OneToOneRel
 from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -202,24 +202,35 @@ class SimplifyView(APIView):
             includes_on_model = []
             for field_name in include:
                 try:
-                    includes_on_model.append(self.model._meta.get_field(field_name))
+                    includes_on_model.append(self.get_field_tree(field_name))
                 except:
-                    # handling property includes or nested includes is insanity. Give up on optimizations and use the old way
+                    # handling property includes is insanity. Give up on optimizations and use the old way
                     simple = False
 
+            # nested includes are not currently supported in the happy path
+            if len([include for include in includes_on_model if len(include) > 2]) > 0:
+                simple = False
+
             if simple:
-                for include_field in includes_on_model:
-                    if hasattr(include_field, 'related_model'):
-                        exclude_fields = include_field.related_model.get_excludes() if hasattr(include_field.related_model, 'get_excludes') else []
-                        include_fields = [
-                            include_field.name + '__' + field.attname 
-                            for field in include_field.related_model._meta.get_fields()
-                            if not field.auto_created and field.concrete and field.name not in exclude_fields
-                        ]
-                        fields.extend(include_fields)
-                        full_includes.append(include_field.name)
-                    if hasattr(include_field, 'multiple') and include_field.multiple:
-                        multi_field.append(include_field.name)
+                for include_field_tree in includes_on_model:
+                    for include_field in include_field_tree[1:]:
+                        if hasattr(include_field, 'related_model'):
+                            exclude_fields = include_field.related_model.get_excludes() if hasattr(include_field.related_model, 'get_excludes') else []
+                            include_fields = [
+                                include_field.name + '__' + field.attname 
+                                for field in include_field.related_model._meta.get_fields()
+                                if not field.auto_created and field.concrete and field.name not in exclude_fields
+                            ]
+                            fields.extend(include_fields)
+                            full_includes.append(include_field.name)
+                        if hasattr(include_field, 'multiple') and include_field.multiple:
+                            multi_field.append(include_field.name)
+            else:
+                for include_field_tree in includes_on_model:
+                    if len(include_field_tree) == 2 and type(include_field_tree[1]) == ForeignKey:
+                        obj = obj.select_related(include_field_tree[0])
+                    elif type(include_field_tree[1]) in (ManyToManyRel, ManyToOneRel, OneToOneRel):
+                        obj = obj.prefetch_related(include_field_tree[0])
 
         # gefilter fish
         filters = request.query_params.get('filters', [])
@@ -491,6 +502,19 @@ class SimplifyView(APIView):
             if hasattr(field, 'related_model'):
                 current_class = field.related_model
         return field
+
+    def get_field_tree(self, field_long_name):
+        tree = field_long_name.split('__')
+        fields = [field_long_name]
+
+        current_class = self.model
+        field = None
+        for field_name in tree:
+            field = current_class._meta.get_field(field_name)
+            fields.append(field)
+            if hasattr(field, 'related_model'):
+                current_class = field.related_model
+        return fields
 
     def get_obj_from_linked_objects(self, pk, parent_resource, parent_pk):
         # find the resource that this request is looking for
