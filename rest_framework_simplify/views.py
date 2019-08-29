@@ -229,7 +229,7 @@ class SimplifyView(APIView):
                 for include_field_tree in includes_on_model:
                     if len(include_field_tree) == 2 and type(include_field_tree[1]) == ForeignKey:
                         obj = obj.select_related(include_field_tree[0])
-                    elif type(include_field_tree[1]) in (ManyToManyRel, ManyToOneRel, OneToOneRel):
+                    elif type(include_field_tree[1]) in (ForeignKey, ManyToManyRel, ManyToOneRel, OneToOneRel):
                         obj = obj.prefetch_related(include_field_tree[0])
 
         # gefilter fish
