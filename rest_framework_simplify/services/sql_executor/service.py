@@ -104,8 +104,7 @@ class SQLServerExecutorService(SQLExecutorService):
     class Meta:
         proxy = True
 
-    def build_sp_command(self, procedure_name, sp_params):
-        params = self.get_stored_procedure_params(procedure_name)
+    def build_sp_command(self, procedure_name, sp_params, params):
         command = 'EXEC ' + procedure_name
         if sp_params and len(sp_params) > 0:
             for index, param in enumerate(sp_params):
@@ -139,7 +138,7 @@ class SQLServerExecutorService(SQLExecutorService):
                 result = cursor.fetchall()
                 params = [row[0] for row in result]
 
-                sp_command = self.build_sp_command(procedure_name, params_formatter(params))
+                sp_command = self.build_sp_command(procedure_name, params_formatter(params), params)
                 cursor.execute(sp_command)
                 try:
                     result = cursor.fetchall()
