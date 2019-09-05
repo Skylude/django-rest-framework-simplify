@@ -43,21 +43,21 @@ class StoredProcedureForm(forms.Form):
 
     def execute_sp(self):
         # call stored procedure
-        sp_service = SQLExecutorService(self.connection_data['server'], self.connection_data['database'],
-                                        self.connection_data['username'], self.connection_data['password'],
-                                        port=self.connection_data['port'], engine=self.engine)
-        sp_params = self.get_params()
-        result = sp_service.call_stored_procedure(self.sp_name, sp_params)
-        return result
+        sp_service = SQLExecutorService(
+            self.connection_data['server'],
+            self.connection_data['database'],
+            self.connection_data['username'],
+            self.connection_data['password'],
+            port=self.connection_data['port'],
+            engine=self.engine
+        )
+        return sp_service.call_stored_procedure(self.sp_name, self.format_params)
+
 
 
 class PostgresStoredProcedureForm(StoredProcedureForm):
     # method will get params and put form parameters in the correct order that the stored procedure needs
-    def get_params(self):
-        sql_executor = SQLExecutorService(self.connection_data['server'], self.connection_data['database'],
-                                          self.connection_data['username'], self.connection_data['password'],
-                                          self.connection_data['port'], engine=self.engine)
-        sp_params = sql_executor.get_stored_procedure_params(self.sp_name)
+    def format_params(self, sp_params):
         params = []
         for field in sp_params:
             try:
@@ -74,11 +74,7 @@ class PostgresStoredProcedureForm(StoredProcedureForm):
 
 class SQLServerStoredProcedureForm(StoredProcedureForm):
     # method will get params and put form parameters in the correct order that the stored procedure needs
-    def get_params(self):
-        sql_executor = SQLExecutorService(self.connection_data['server'], self.connection_data['database'],
-                                          self.connection_data['username'], self.connection_data['password'],
-                                          port=self.connection_data['port'], engine=self.engine)
-        sp_params = sql_executor.get_stored_procedure_params(self.sp_name)
+    def format_params(self, sp_params):
         params = []
         for field in sp_params:
             try:

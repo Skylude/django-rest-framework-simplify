@@ -2,6 +2,7 @@ import datetime
 import pymssql
 import psycopg2
 from django.db import connection
+from django.conf import settings
 
 from rest_framework_simplify.mapper import Mapper
 from rest_framework_simplify.services.sql_executor.exceptions import EngineNotSupported
@@ -39,10 +40,7 @@ class SQLExecutorService:
     def build_sp_command(self, procedure_name, sp_params):
         raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
 
-    def call_stored_procedure(self, procedure_name, params):
-        raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
-
-    def get_stored_procedure_params(self, sp_name):
+    def call_stored_procedure(self, procedure_name, params_formatter):
         raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
 
 
@@ -53,17 +51,43 @@ class PostgresExecutorService(SQLExecutorService):
     def build_sp_command(self, procedure_name, sp_params):
         pass
 
-    def call_stored_procedure(self, procedure_name, params):
-        conn = psycopg2.connect('dbname={0} user={1} password={2} host={3} port={4}'.format(
-            self.connection_data['database'], self.connection_data['username'], self.connection_data['password'],
-            self.connection_data['server'], self.connection_data['port'])
-        )
-        with conn.cursor() as c:
-            c.callproc(procedure_name, params)
-            res = self.dictfetchall(c)
-            c.close()
-            snake_case_results = Mapper().camelcase_to_underscore(res)
-            return snake_case_results
+    def get_connection(self):
+        if (
+            settings.DATABASES['default']['HOST'] == self.connection_data['server'] and
+            settings.DATABASES['default']['NAME'] == self.connection_data['database'] and
+            settings.DATABASES['default']['USER'] == self.connection_data['username'] and
+            settings.DATABASES['default']['PASSWORD'] == self.connection_data['password'] and
+            settings.DATABASES['default']['PORT'] == str(self.connection_data['port'])
+        ):
+            return connection
+        else:
+            return psycopg2.connect('dbname={0} user={1} password={2} host={3} port={4}'.format(
+                self.connection_data['database'], self.connection_data['username'], self.connection_data['password'],
+                self.connection_data['server'], self.connection_data['port'])
+            )
+
+    def call_stored_procedure(self, procedure_name, params_formatter):
+        connection = self.get_connection()
+        with connection.cursor() as cursor:
+            cursor.execute('''
+                SELECT pg_catalog.pg_get_function_arguments(p.oid)
+                FROM pg_catalog.pg_proc p
+                WHERE p.proname ~ '^({0})$'
+                    AND pg_catalog.pg_function_is_visible(p.oid)
+                LIMIT 1;
+            '''.format(procedure_name.lower()))
+            result = cursor.fetchall()
+            params_result = []
+            for x in result[0][0].split(','):
+                params_result.append(x.lstrip().split(' ')[0])
+            if len(params_result) == 1 and params_result[0] == '':
+                params_result = []
+
+            cursor.callproc(procedure_name, params_formatter(params_result))
+            result = self.dictfetchall(cursor)
+        connection.close()
+        
+        return Mapper.camelcase_to_underscore(result)
 
     @staticmethod
     def dictfetchall(cursor):
@@ -74,27 +98,6 @@ class PostgresExecutorService(SQLExecutorService):
             for row in cursor.fetchall()
         ]
 
-    def get_stored_procedure_params(self, sp_name):
-        conn = psycopg2.connect('dbname={0} user={1} password={2} host={3} port={4}'.format(
-            self.connection_data['database'], self.connection_data['username'], self.connection_data['password'],
-            self.connection_data['server'], self.connection_data['port'])
-        )
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT pg_catalog.pg_get_function_arguments(p.oid)
-            FROM pg_catalog.pg_proc p
-            WHERE p.proname ~ '^({0})$'
-                AND pg_catalog.pg_function_is_visible(p.oid)
-            LIMIT 1;
-        '''.format(sp_name.lower()))
-        result = cursor.fetchall()
-        res = []
-        for x in result[0][0].split(','):
-            res.append(x.lstrip().split(' ')[0])
-        conn.close()
-        if len(res) == 1 and res[0] == '':
-            return []
-        return res
 
 
 class SQLServerExecutorService(SQLExecutorService):
@@ -127,12 +130,16 @@ class SQLServerExecutorService(SQLExecutorService):
                     command += ','
         return command
 
-    def call_stored_procedure(self, procedure_name, params):
-        sp_command = self.build_sp_command(procedure_name, params)
-        # execute command
+    def call_stored_procedure(self, procedure_name, params_formatter):
         with pymssql.connect(self.connection_data['server'], self.connection_data['username'],
                              self.connection_data['password'], self.connection_data['database']) as conn:
             with conn.cursor() as cursor:
+                # this may need to change to only get IN params not out params -- we will see
+                cursor.execute('SELECT PARAMETER_NAME FROM INFORMATION_SCHEMA.PARAMETERS WHERE SPECIFIC_NAME=%s AND PARAMETER_MODE=%s ORDER BY ORDINAL_POSITION', (procedure_name, 'IN'))
+                result = cursor.fetchall()
+                params = [row[0] for row in result]
+
+                sp_command = self.build_sp_command(procedure_name, params_formatter(params))
                 cursor.execute(sp_command)
                 try:
                     result = cursor.fetchall()
@@ -148,16 +155,7 @@ class SQLServerExecutorService(SQLExecutorService):
                 mapped_result = [dict(zip(column_names, row)) for row in result]
 
                 # now untitle case them, camel case them and finally snake_case them
-                camel_cased_results = Mapper().titlecase_to_camelcase(mapped_result)
-                snake_case_results = Mapper().camelcase_to_underscore(camel_cased_results)
+                camel_cased_results = Mapper.titlecase_to_camelcase(mapped_result)
+                snake_case_results = Mapper.camelcase_to_underscore(camel_cased_results)
 
                 return snake_case_results
-
-    def get_stored_procedure_params(self, sp_name):
-        with pymssql.connect(self.connection_data['server'], self.connection_data['username'],
-                             self.connection_data['password'], self.connection_data['database']) as conn:
-            with conn.cursor() as cursor:
-                # this may need to change to only get IN params not out params -- we will see
-                cursor.execute('SELECT PARAMETER_NAME FROM INFORMATION_SCHEMA.PARAMETERS WHERE SPECIFIC_NAME=%s AND PARAMETER_MODE=%s ORDER BY ORDINAL_POSITION', (sp_name, 'IN'))
-                result = cursor.fetchall()
-                return [row[0] for row in result]

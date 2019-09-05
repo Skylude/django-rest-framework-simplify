@@ -444,9 +444,8 @@ class StoredProcedureTests(unittest.TestCase):
 
     api_client = APIClient()
 
-    @unittest.mock.patch('rest_framework_simplify.forms.SQLServerStoredProcedureForm.get_params')
     @unittest.mock.patch('rest_framework_simplify.services.sql_executor.service.SQLServerExecutorService.call_stored_procedure')
-    def test_post(self, mock_execute_stored_procedure, mock_get_params):
+    def test_post(self, mock_execute_stored_procedure):
         # arrange
         url = '/sqlStoredProcedures'
         body = {
@@ -454,7 +453,6 @@ class StoredProcedureTests(unittest.TestCase):
             'testId': 1234
         }
         mock_execute_stored_procedure.return_value = [{'amount': Decimal('612.0000')}]
-        mock_get_params.return_value = [1234]
 
         # act
         result = self.api_client.post(url, body, format='json')
@@ -493,9 +491,8 @@ class StoredProcedureTests(unittest.TestCase):
         self.assertEqual(result.data['errorMessage'],
                          SimplifyStoredProcedureView.ErrorMessages.INVALID_PARAMS.format(body['spName']))
 
-    @unittest.mock.patch('rest_framework_simplify.forms.PostgresStoredProcedureForm.get_params')
     @unittest.mock.patch('rest_framework_simplify.services.sql_executor.service.PostgresExecutorService.call_stored_procedure')
-    def test_postgres(self, mock_execute_stored_procedure, mock_get_params):
+    def test_postgres(self, mock_execute_stored_procedure):
         # arrange
         url = '/postgresStoredProcedures'
         body = {
@@ -503,7 +500,6 @@ class StoredProcedureTests(unittest.TestCase):
             'var_int': 1
         }
         mock_execute_stored_procedure.return_value = [{'amount': Decimal('612.0000')}]
-        mock_get_params.return_value = [1234]
 
         # act
         result = self.api_client.post(url, body, format='json')
