@@ -59,15 +59,15 @@ class PostgresExecutorService(SQLExecutorService):
             settings.DATABASES['default']['PASSWORD'] == self.connection_data['password'] and
             settings.DATABASES['default']['PORT'] == str(self.connection_data['port'])
         ):
-            return connection
+            return connection, True
         else:
             return psycopg2.connect('dbname={0} user={1} password={2} host={3} port={4}'.format(
                 self.connection_data['database'], self.connection_data['username'], self.connection_data['password'],
                 self.connection_data['server'], self.connection_data['port'])
-            )
+            ), False
 
     def call_stored_procedure(self, procedure_name, params_formatter):
-        connection = self.get_connection()
+        connection, is_managed = self.get_connection()
         with connection.cursor() as cursor:
             cursor.execute('''
                 SELECT pg_catalog.pg_get_function_arguments(p.oid)
@@ -85,7 +85,9 @@ class PostgresExecutorService(SQLExecutorService):
 
             cursor.callproc(procedure_name, params_formatter(params_result))
             result = self.dictfetchall(cursor)
-        connection.close()
+
+        if not is_managed:
+            connection.close()
         
         return Mapper.camelcase_to_underscore(result)
 
