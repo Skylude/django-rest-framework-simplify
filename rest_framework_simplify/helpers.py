@@ -23,6 +23,14 @@ def convert_serialized_binary_to_string(serialized_binary_data):
 def binary_string_to_string(binary_str):
     return binary_str.decode('utf-8', errors='ignore').replace('\\n', ' ').replace('\\r', '')
 
+def handle_bytes_decoding(item):
+    for key in item:
+        if type(item[key]) is dict:
+            handle_bytes_decoding(item[key])
+        if type(item[key]) is memoryview:
+            item[key] = binary_string_to_string(bytes(item[key]))
+        elif type(item[key]) is bytes:
+            item[key] = binary_string_to_string(item[key])
 
 def generate_str(str_length):
     return str(uuid.uuid4())[:str_length]

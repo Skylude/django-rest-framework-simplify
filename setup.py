@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='django-rest-framework-simplify',
-    version='1.3.22.dev1',
+    version='1.3.23.dev1',
     description='Django Rest Framework Simplify',
     author='Skyler Cain',
     author_email='skylercain@gmail.com',
