@@ -4,6 +4,7 @@ import requests
 from django import forms
 
 from rest_framework_simplify.exceptions import EmailTemplateException
+from rest_framework_simplify.helpers import handle_bytes_decoding
 from rest_framework_simplify.services.sql_executor.exceptions import EngineNotSupported
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
 
@@ -51,7 +52,12 @@ class StoredProcedureForm(forms.Form):
             port=self.connection_data['port'],
             engine=self.engine
         )
-        return sp_service.call_stored_procedure(self.sp_name, self.format_params)
+        result = sp_service.call_stored_procedure(self.sp_name, self.format_params)
+
+        for item in result:
+            handle_bytes_decoding(item)
+
+        return result
 
 
 

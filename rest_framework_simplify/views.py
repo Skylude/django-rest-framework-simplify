@@ -3,7 +3,7 @@ import dateutil.parser
 import logging
 import traceback
 
-from collections import OrderedDict 
+from collections import OrderedDict
 from decimal import Decimal
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
@@ -17,6 +17,7 @@ from mongoengine.errors import DoesNotExist
 
 from rest_framework_simplify.exceptions import ParseException
 from rest_framework_simplify.helpers import binary_string_to_string
+from rest_framework_simplify.helpers import handle_bytes_decoding
 from rest_framework_simplify.mapper import Mapper
 from rest_framework_simplify.serializer import MongoEngineSerializer, SQLEngineSerializer
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
@@ -181,9 +182,9 @@ class SimplifyView(APIView):
                 foreign_key_ids.append(field.name + '_id')
         requested_fields = [
             Mapper.camelcase_to_underscore(field.strip())
-            for field in req_fields 
-            if Mapper.camelcase_to_underscore(field.strip()) in model_fields 
-            or field.strip() in include 
+            for field in req_fields
+            if Mapper.camelcase_to_underscore(field.strip()) in model_fields
+            or field.strip() in include
             or Mapper.camelcase_to_underscore(field.strip()) in foreign_key_ids
         ]
         fields = requested_fields
@@ -217,7 +218,7 @@ class SimplifyView(APIView):
                         if hasattr(include_field, 'related_model'):
                             exclude_fields = include_field.related_model.get_excludes() if hasattr(include_field.related_model, 'get_excludes') else []
                             include_fields = [
-                                include_field.name + '__' + field.attname 
+                                include_field.name + '__' + field.attname
                                 for field in include_field.related_model._meta.get_fields()
                                 if not field.auto_created and field.concrete and field.name not in exclude_fields
                             ]
@@ -430,8 +431,8 @@ class SimplifyView(APIView):
                             if all (type(item) is dict for item in all_items):
                                 # a little uniquefying magic, courtesy of stack overflow https://stackoverflow.com/a/7090833
                                 item[difference] = [
-                                    dict(tupleized) 
-                                    for tupleized in 
+                                    dict(tupleized)
+                                    for tupleized in
                                     set(tuple(item.items())
                                     for item in all_items)
                                 ]
@@ -449,7 +450,7 @@ class SimplifyView(APIView):
             body = [body_by_primary_key[primary_key][0] for primary_key in body_by_primary_key]
 
             for item in body:
-                self.handle_bytes_decoding(item)
+                handle_bytes_decoding(item)
 
             if is_single_result:
                 if len(body) == 0:
@@ -480,21 +481,12 @@ class SimplifyView(APIView):
             return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
                                                 count=total_items, using_cache=False, cache_key=cache_key)
 
-    @classmethod
-    def handle_bytes_decoding(cls, item):
-            for key in item:
-                if type(item[key]) is dict:
-                    cls.handle_bytes_decoding(item[key])
-                if type(item[key]) is memoryview:
-                    item[key] = binary_string_to_string(bytes(item[key]))
-                elif type(item[key]) is bytes:
-                    item[key] = binary_string_to_string(item[key])
 
     def get_field_nested(self, field_long_name):
         tree = field_long_name.split('__')
         if len(tree) == 1:
             return self.model._meta.get_field(tree[0])
-        
+
         current_class = self.model
         field = None
         for field_name in tree:
