@@ -233,6 +233,37 @@ class BasicClassTests(unittest.TestCase):
         linking_classes = LinkingClass.objects.filter(basic_class=basic_class)
         self.assertEqual(len(linking_classes), 1)
 
+    def test_post_sub_resource_as_array(self):
+        # arrange
+        text_field_one = str(uuid.uuid4())[:10]
+        text_field_two = str(uuid.uuid4())[:10]
+        url = '/basicClasses?include=model_with_parent_resources'
+        body = {
+            'name': 'test 123',
+            'modelWithParentResources': [
+                {
+                    'textField': text_field_one
+                },
+                {
+                    'textField': text_field_two
+                }
+            ]
+        }
+
+        # act
+        result = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(result.status_code, 201)
+        basic_class = BasicClass.objects.get(id=result.data['id'])
+        self.assertTrue(basic_class.model_with_parent_resources.count() == 2)
+        self.assertIsNotNone(result.data.get('modelWithParentResources'))
+        self.assertTrue(len(result.data['modelWithParentResources']) == 2)
+        self.assertIsNotNone(result.data['modelWithParentResources'][0]['id'])
+        self.assertEqual(result.data['modelWithParentResources'][0]['basicClassId'], result.data['id'])
+        self.assertEqual(result.data['modelWithParentResources'][1]['basicClassId'], result.data['id'])
+        self.assertEqual(result.data['modelWithParentResources'][0]['textField'], text_field_one)
+
     def test_post_sub_resource_to_linking_class_with_id(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
@@ -389,7 +420,6 @@ class BasicClassTests(unittest.TestCase):
         # assert
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertEqual(len(result.data), 1)
-
 
 
 class ReadReplicaTests(unittest.TestCase):

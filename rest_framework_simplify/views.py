@@ -668,7 +668,16 @@ class SimplifyView(APIView):
             snake_cased_url_tail = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
             self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
 
-        return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
+        # handle includes
+        req_includes = request.query_params.get('include', [])
+        if req_includes:
+            req_includes = req_includes.split(',')
+            if type(req_includes) is not list:
+                req_includes = [req_includes]
+        model_includes = self.model.get_includes() if hasattr(self.model, 'get_includes') else []
+        include = [Mapper.camelcase_to_underscore(include.strip()) for include in req_includes if Mapper.camelcase_to_underscore(include.strip()) in model_includes]
+
+        return self.create_response(obj, response_status=status.HTTP_201_CREATED, include=include, serialize=True)
 
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:

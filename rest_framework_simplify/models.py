@@ -5,7 +5,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db.models import Model as DjangoModel
 from django.db.models.fields import BinaryField, DateTimeField as DjangoDateTimeField, DecimalField
-from django.db.models.fields.related import ForeignKey as DjangoForeignKey, OneToOneField
+from django.db.models.fields.related import ForeignKey as DjangoForeignKey, OneToOneField, ManyToOneRel
 
 from mongoengine import DateTimeField, signals
 from mongoengine.base.datastructures import EmbeddedDocumentList
@@ -29,6 +29,7 @@ class SimplifyModel(DjangoModel):
 
     def __init__(self, *args, **kwargs):
         super(SimplifyModel, self).__init__(*args, **kwargs)
+        self.related_items_to_be_added = []
         self.related_items_to_be_saved = []
         self.encrypted_fields = []
         if hasattr(self, 'change_tracking_fields'):
@@ -51,7 +52,7 @@ class SimplifyModel(DjangoModel):
             raise Exception('{0} is not in the change_tracking_fields attribute'.format(field_name))
 
     @classmethod
-    def parse(cls, data, existing_id=None, reference_fields=None, current_parse_level=1, request=None):
+    def parse(cls, data, existing_id=None, reference_fields=None, current_parse_level=1, request=None, parent_name=None):
         """Parses a dictionary into a domain model.
 
         This parser will attempt to convert a dictionary object to the defined model. This is an abstract
@@ -160,7 +161,48 @@ class SimplifyModel(DjangoModel):
                                 pass
                         else:
                             raise ParseException(ErrorMessages.TOO_DEEP)
+                    elif parent_name is not None and parent_name == field_name:
+                        obj.related_items_to_be_saved.append(field_name)
 
+                # post new sub-array, create new manyToOneRelationships/classes
+                elif type(field) is ManyToOneRel and cc_field_value is not None:
+                    # get the related_class of the field so we can use that to query the db to wire things up
+                    related_cls = field.related_model
+                    for item in cc_field_value:
+                        # parse the object if we aren't in too deep
+                        if current_parse_level <= cls.parseable_levels:
+                            # if it is a dict we need to try and parse it
+                            if type(item) is dict:
+                                # check for an id so we can set existing_id on the next parse function
+                                related_item_id = None
+                                if 'id' in item.keys():
+                                    related_item_id = item['id']
+                                # increase the parse level to avoid going too deep
+                                next_parse_level = current_parse_level + 1
+                                # call parse on related_field
+                                try:
+                                    related_item = related_cls.parse(item, existing_id=related_item_id,
+                                                                     current_parse_level=next_parse_level,
+                                                                     request=request, parent_name='basic_class')
+                                    # todo: make parent_name dynamic
+                                # overall parsing failed if we didn't a nested item and we should have
+                                except ParseException as ex:
+                                    raise ParseException(
+                                        ErrorMessages.PARSEABLE_RELATED_FIELD_PARSE_FAILED.format(ex.args[0]))
+                                else:
+                                    # add = getattr(getattr(obj, field_name), 'add')
+                                    # add(related_item)
+                                    # setattr(obj, field_name, related_item)
+                                    obj.related_items_to_be_added.append({
+                                        'field_name': field_name,
+                                        'related_item': related_item
+                                    })
+
+                            # they are trying to set item to null todo: possibly delete item from db?
+                            elif item is None:
+                                pass
+                        else:
+                            raise ParseException(ErrorMessages.TOO_DEEP)
                 # if the field name was passed in try to update it
                 elif field_name in data.keys() or cc_field in data.keys():
                     if type(field) is DjangoDateTimeField and field_value:
@@ -205,6 +247,11 @@ class SimplifyModel(DjangoModel):
             related_item.cascade_save(write_db=write_db)
             setattr(self, related_item_to_be_saved, related_item)
         self.save(using=write_db)
+        for related_item_to_be_added in self.related_items_to_be_added:
+            field_name = related_item_to_be_added.get('field_name')
+            related_item = related_item_to_be_added.get('related_item')
+            add = getattr(getattr(self, field_name), 'add')
+            add(related_item, bulk=False)
 
     @classmethod
     def get_meta_data(cls):

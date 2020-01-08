@@ -55,7 +55,8 @@ class BasicClass(SimplifyModel):
 
     @staticmethod
     def get_includes():
-        return ['child_one__name', 'child_three', 'model_with_sensitive_data', 'child_one']
+        return ['child_one__name', 'child_three', 'model_with_sensitive_data', 'model_with_parent_resources',
+                'child_one']
 
     @staticmethod
     def get_excludes():
@@ -181,4 +182,4 @@ class ModelWithSensitiveData(SimplifyModel):
 class ModelWithParentResource(SimplifyModel):
     id = models.AutoField(primary_key=True)
     text_field = models.CharField(max_length=32, null=True, blank=True)
-    basic_class = models.ForeignKey('BasicClass', null=False, blank=False)
+    basic_class = models.ForeignKey('BasicClass', null=False, blank=False, related_name='model_with_parent_resources')
