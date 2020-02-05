@@ -1,4 +1,4 @@
-### 2/5/2020 1.3.17
+### 2/5/2020 1.3.24
 Fixed `PostgresExecutorService` to not error working with a stored procedure without arguments.
 
 ### 7/29/2019 1.3.16
