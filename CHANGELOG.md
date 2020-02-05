@@ -1,3 +1,6 @@
+### 2/5/2020 1.3.17
+Fixed `PostgresExecutorService` to not error working with a stored procedure without arguments.
+
 ### 7/29/2019 1.3.16
 Fixed `SimplifyJsonTextField` custom Django field to prevent json.dumping() value more than once
 

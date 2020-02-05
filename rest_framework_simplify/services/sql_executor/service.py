@@ -78,10 +78,13 @@ class PostgresExecutorService(SQLExecutorService):
             '''.format(procedure_name.lower()))
             result = cursor.fetchall()
             params_result = []
-            for x in result[0][0].split(','):
-                params_result.append(x.lstrip().split(' ')[0])
-            if len(params_result) == 1 and params_result[0] == '':
-                params_result = []
+            if len(result) == 0:
+                params_result = None
+            else:
+                for x in result[0][0].split(','):
+                    params_result.append(x.lstrip().split(' ')[0])
+                if len(params_result) == 1 and params_result[0] == '':
+                    params_result = []
 
             cursor.callproc(procedure_name, params_formatter(params_result))
             result = self.dictfetchall(cursor)
