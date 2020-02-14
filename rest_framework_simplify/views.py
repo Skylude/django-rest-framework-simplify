@@ -7,7 +7,7 @@ from collections import OrderedDict
 from decimal import Decimal
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, CharField, Value
+from django.db.models import F, CharField, Value, Count, Sum
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToOneRel, ManyToManyRel, OneToOneRel
 from rest_framework import exceptions
 from rest_framework.response import Response
@@ -23,6 +23,11 @@ from rest_framework_simplify.serializer import MongoEngineSerializer, SQLEngineS
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
 from rest_framework_simplify.errors import ErrorMessages
 
+
+name_to_aggregate = {
+    'count': Count,
+    'sum': Sum,
+}
 
 class SimplifyView(APIView):
 
@@ -189,10 +194,6 @@ class SimplifyView(APIView):
         ]
         fields = requested_fields
 
-        if len(fields) > 0:
-            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
-            if model_primary_key_name not in fields:
-                simple = False
 
         if simple and len(req_fields) == 0:
             fields = [field.attname for field in self.model._meta.get_fields() if not field.auto_created and field.concrete]
@@ -232,6 +233,21 @@ class SimplifyView(APIView):
                         obj = obj.select_related(include_field_tree[0])
                     elif type(include_field_tree[1]) in (ForeignKey, ManyToManyRel, ManyToOneRel, OneToOneRel):
                         obj = obj.prefetch_related(include_field_tree[0])
+
+        if len(fields) > 0:
+            for field_name in fields:
+                try:
+                    field = self.model._meta.get_field(field_name)
+                    if hasattr(field, 'multiple') and field.multiple:
+                        multi_field.append(field.name)
+                    if hasattr(field, 'many_to_many') and field.many_to_many:
+                        multi_field.append(field.name)
+                except:
+                    pass
+
+            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
+            if model_primary_key_name not in fields and len(multi_field) > 0:
+                simple = False
 
         # gefilter fish
         filters = request.query_params.get('filters', [])
@@ -324,6 +340,18 @@ class SimplifyView(APIView):
             # exclude any items that shouldnt be in the final list
             obj = obj.using(self.read_db).exclude(**exclude_filter_kwargs)
 
+        # handle aggregates
+        aggregate = request.query_params.get('aggregate', None)
+ 
+        if aggregate:
+            raw_type, raw_field = aggregate.split('___')
+            aggregate_type_cls = name_to_aggregate[raw_type.lower()]
+            aggregate_field = Mapper.camelcase_to_underscore(raw_field)
+            aggregate_field_name = '{}_of_{}'.format(raw_type.lower(), aggregate_field)
+            body = obj.aggregate(**{aggregate_field_name:aggregate_type_cls(aggregate_field)})
+            return self.create_response(body=body, serialize=True, include=None, exclude=None, fields=None,
+                                        count=None, using_cache=False, cache_key=None, optimized_serialize=True)
+
         # handle distinct
         distinct = request.query_params.get('distinct', False)
         if distinct:
@@ -365,89 +393,91 @@ class SimplifyView(APIView):
 
         if simple:
             fields = [field for field in fields if field not in excludes]
+            obj = obj.values(*fields)
 
-            for field_name in fields:
-                try:
-                    field = self.model._meta.get_field(field_name)
-                    if hasattr(field, 'multiple') and field.multiple:
-                        multi_field.append(field.name)
-                except:
-                    pass
+            # handle annotations
+            annotate = request.query_params.get('annotate', None)
 
+            if annotate:
+                raw_type, raw_field = annotate.split('___')
+                annotation_type_cls = name_to_aggregate[raw_type.lower()]
+                annotation_field = Mapper.camelcase_to_underscore(raw_field)
+                annotation_field_name = '{}_of_{}'.format(raw_type.lower(), annotation_field)
+                obj = obj.annotate(**{annotation_field_name:annotation_type_cls(annotation_field)})
 
-            body = list(obj.values(*fields))
+            body = list(obj)
 
-            if order_by:
-                body_by_primary_key = OrderedDict()
-            else:
-                body_by_primary_key = {}
-            # pk is not always id
-            model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
-            for body_item in body:
-                if body_item[model_primary_key_name] not in body_by_primary_key:
-                    body_by_primary_key[body_item[model_primary_key_name]] = []
-                body_by_primary_key[body_item[model_primary_key_name]].append(body_item)
+            if full_includes:
+                for body_item in body:
+                    for include_field in full_includes:
+                        field_names = [field for field in body_item if include_field + '__' in field]
+                        field_names_to_remove = [field for field in field_names if field not in include]
 
-            for primary_key in body_by_primary_key:
-                body_items = body_by_primary_key[primary_key]
+                        body_item[include_field] = {
+                            field_name.replace(include_field + "__", ''):body_item[field_name]
+                            for field_name in field_names
+                        }
 
-                # process full includes
-                if full_includes:
-                    for body_item in body_items:
-                        for include_field in full_includes:
-                            field_names = [field for field in body_item if include_field + '__' in field]
-                            field_names_to_remove = [field for field in field_names if field not in include]
-
-                            body_item[include_field] = {
-                                field_name.replace(include_field + "__", ''):body_item[field_name]
-                                for field_name in field_names
-                            }
-
-                            if all (val == None for val in body_item[include_field].values()):
-                                if include_field in multi_field:
-                                    body_item[include_field] = []
-                                else:
-                                    body_item[include_field] = None
-
-                            for field_name in field_names_to_remove:
-                                del body_item[field_name]
-
-                # handle possible many to many relationships
-                if len(body_items) > 1:
-                    keys = [key for key in body_items[0]]
-                    checked_values = {}
-                    differences = set()
-                    for item in body_items:
-                        for key in keys:
-                            if key not in checked_values:
-                                checked_values[key] = item[key]
-                            if checked_values[key] != item[key]:
-                                differences.add(key)
-
-                    if len(differences) > 0:
-                        item = body_items[0]
-                        for difference in differences:
-                            all_items = [body_item[difference] for body_item in body_items]
-                            if all (type(item) is dict for item in all_items):
-                                # a little uniquefying magic, courtesy of stack overflow https://stackoverflow.com/a/7090833
-                                item[difference] = [
-                                    dict(tupleized)
-                                    for tupleized in
-                                    set(tuple(item.items())
-                                    for item in all_items)
-                                ]
+                        if all (val == None for val in body_item[include_field].values()):
+                            if include_field in multi_field:
+                                body_item[include_field] = []
                             else:
-                                item[difference] = all_items
-                        body_by_primary_key[primary_key] = [item]
-                    else:
-                        raise Exception('duplicate object for key')
+                                body_item[include_field] = None
 
-                # at this point it should be one item
-                for field_name in multi_field:
-                    if not type(body_by_primary_key[primary_key][0][field_name]) is list:
-                        body_by_primary_key[primary_key][0][field_name] = [body_by_primary_key[primary_key][0][field_name]]
+                        for field_name in field_names_to_remove:
+                            del body_item[field_name]
 
-            body = [body_by_primary_key[primary_key][0] for primary_key in body_by_primary_key]
+            if len(multi_field) > 0:
+                if order_by:
+                    body_by_primary_key = OrderedDict()
+                else:
+                    body_by_primary_key = {}
+                # pk is not always id
+                model_primary_key_name = [field.attname for field in self.model._meta.get_fields() if hasattr(field, 'primary_key') and field.primary_key][0]
+                for body_item in body:
+                    if body_item[model_primary_key_name] not in body_by_primary_key:
+                        body_by_primary_key[body_item[model_primary_key_name]] = []
+                    body_by_primary_key[body_item[model_primary_key_name]].append(body_item)
+
+                for primary_key in body_by_primary_key:
+                    body_items = body_by_primary_key[primary_key]
+
+                    # handle possible many to many relationships
+                    if len(body_items) > 1:
+                        keys = [key for key in body_items[0]]
+                        checked_values = {}
+                        differences = set()
+                        for item in body_items:
+                            for key in keys:
+                                if key not in checked_values:
+                                    checked_values[key] = item[key]
+                                if checked_values[key] != item[key]:
+                                    differences.add(key)
+
+                        if len(differences) > 0:
+                            item = body_items[0]
+                            for difference in differences:
+                                all_items = [body_item[difference] for body_item in body_items]
+                                if all (type(item) is dict for item in all_items):
+                                    # a little uniquefying magic, courtesy of stack overflow https://stackoverflow.com/a/7090833
+                                    item[difference] = [
+                                        dict(tupleized)
+                                        for tupleized in
+                                        set(tuple(item.items())
+                                        for item in all_items)
+                                    ]
+                                else:
+                                    item[difference] = all_items
+                            body_by_primary_key[primary_key] = [item]
+                        else:
+                            body_by_primary_key[primary_key] = body_items[0]
+
+                    # at this point it should be one item
+                    for field_name in multi_field:
+                        if not type(body_by_primary_key[primary_key][0][field_name]) is list:
+                            body_by_primary_key[primary_key][0][field_name] = [body_by_primary_key[primary_key][0][field_name]]
+
+                body = [body_by_primary_key[primary_key][0] for primary_key in body_by_primary_key]
 
             for item in body:
                 handle_bytes_decoding(item)

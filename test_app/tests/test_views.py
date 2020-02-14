@@ -390,6 +390,41 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertEqual(len(result.data), 1)
 
+    def test_get_with_annotation(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClasses?annotate=sum___id'
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertGreater(len(result.data), 0)
+        self.assertGreater(result.data[0]['sumOfId'], 0)
+
+    def test_get_with_annotation_child_object(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClasses?fields=id&annotate=Sum___ChildThree'
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertGreater(result.data[0]['sumOfChildThree'], 0)
+
+    def test_get_with_aggregate(self):
+        # arrange
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClasses?aggregate=count___id'
+
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertGreater(result.data['countOfId'], 0)
 
 
 class ReadReplicaTests(unittest.TestCase):
