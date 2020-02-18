@@ -393,7 +393,15 @@ class SimplifyView(APIView):
 
         if simple:
             fields = [field for field in fields if field not in excludes]
-            obj = obj.values(*fields)
+            
+            annotate_group_by = request.query_params.get('annotateGroupBy', None)
+            
+            if annotate_group_by:
+                group_by = annotate_group_by.split(',')
+                if not any(self.any_field_in_path_is_excluded(x) for x in group_by):
+                    obj = obj.values(*group_by)
+            else:
+                obj = obj.values(*fields)
 
             # handle annotations
             annotate = request.query_params.get('annotate', None)
@@ -511,6 +519,19 @@ class SimplifyView(APIView):
             return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
                                                 count=total_items, using_cache=False, cache_key=cache_key)
 
+
+    def any_field_in_path_is_excluded(self, field_long_name):
+        tree = field_long_name.split('__')
+
+        current_class = self.model
+        field = None
+        for field_name in tree:
+            field = current_class._meta.get_field(field_name)
+            if hasattr(current_class, 'get_excludes') and field_name in current_class.get_excludes():
+                return True
+            if hasattr(field, 'related_model'):
+                current_class = field.related_model
+        return False
 
     def get_field_nested(self, field_long_name):
         tree = field_long_name.split('__')
