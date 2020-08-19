@@ -668,6 +668,16 @@ class SimplifyView(APIView):
             snake_cased_url_tail = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
             self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
 
+        # save extra linkers
+        links = request.query_params.get('links', None)
+        if links:
+            for link in links.split('|'):
+                link_reference, link_id = link.split('=')
+                model, link_id_field_name = link_reference.split('__')
+                link_model = obj.__class__._meta.get_field(Mapper.camelcase_to_underscore(model)).related_model
+                back_reference_field_name = next(x for x in link_model._meta.get_fields() if hasattr(x, 'related_model') and x.related_model == obj.__class__).attname
+                link_model(**{back_reference_field_name: obj.id, Mapper.camelcase_to_underscore(link_id_field_name): link_id}).save()
+
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
 
     def put(self, request, pk):

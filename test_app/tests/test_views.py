@@ -233,6 +233,21 @@ class BasicClassTests(unittest.TestCase):
         linking_classes = LinkingClass.objects.filter(basic_class=basic_class)
         self.assertEqual(len(linking_classes), 1)
 
+    def test_post_with_links_param(self):
+        # arrange
+        child_class = DataGenerator.set_up_child_class()
+        url = '/basicClass?links=linking_classes__child_class_id={}'.format(child_class.id)
+        body = {
+            'name': 'test 123'
+        }
+
+        # act
+        result = self.api_client.post(url, body, format='json')
+
+        # assert
+        child_class.refresh_from_db()
+        self.assertEqual(LinkingClass.objects.filter(child_class_id=child_class.id, basic_class_id=result.data['id']).count(), 1)
+
     def test_post_sub_resource_to_linking_class_with_id(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
