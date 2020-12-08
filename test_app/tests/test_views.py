@@ -356,6 +356,33 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertNotIn('topSecret', result.data['modelWithSensitiveData'].keys())
 
+    def test_get_with_include_that_has_no_nested_child_returns_null(self):
+        # arrange
+        child_one = DataGenerator.set_up_child_class('test')
+        basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
+        url = '/basicClass/{0}?include=child_one__nested_child'.format(basic_class.id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertIsNone(result.data['childOne']['nestedChild'])
+
+    def test_get_with_include_that_has_nested_child(self):
+        # arrange
+        child_one = DataGenerator.set_up_child_class('test')
+        nested_child = DataGenerator.set_up_nested_child(child_one=child_one)
+        basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
+        url = '/basicClass/{0}?include=child_one__nested_children'.format(basic_class.id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        self.assertIsNotNone(result.data['childOne']['nestedChildren'])
+
     def test_get_sub_with_pk_and_non_matching_parent_id_should_400(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()

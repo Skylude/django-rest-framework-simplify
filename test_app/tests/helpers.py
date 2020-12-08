@@ -31,6 +31,12 @@ class DataGenerator:
         return child_class
 
     @staticmethod
+    def set_up_nested_child(child_one=None, write_db='default'):
+        nested_child = NestedChild(child_one=child_one)
+        nested_child.save(using=write_db)
+        return nested_child
+
+    @staticmethod
     def set_up_json_text_field_class(json_text=None):
         j_class = JsonTextFieldClass(json_text=json_text)
         j_class.save()
