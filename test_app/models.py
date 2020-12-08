@@ -55,7 +55,7 @@ class BasicClass(SimplifyModel):
 
     @staticmethod
     def get_includes():
-        return ['child_one__name', 'child_three', 'model_with_sensitive_data', 'child_one', 'child_one__nested_children']
+        return ['child_one__name', 'child_three', 'model_with_sensitive_data', 'child_one', 'child_one__nested_child']
 
     @staticmethod
     def get_excludes():
@@ -71,7 +71,7 @@ class ChildClass(SimplifyModel):
 
 class NestedChild(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='nested_children')
+    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='nested_child')
 
 
 class LinkingClass(SimplifyModel):
