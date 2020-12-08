@@ -360,14 +360,14 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         child_one = DataGenerator.set_up_child_class('test')
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
-        url = '/basicClass/{0}?include=child_one__nested_child'.format(basic_class.id)
+        url = '/basicClass/{0}?include=child_one__nested_children'.format(basic_class.id)
 
         # act
         result = self.api_client.get(url, format='json')
 
         # assert
         self.assertEqual(status.HTTP_200_OK, result.status_code)
-        self.assertIsNone(result.data['childOne']['nestedChild'])
+        self.assertIsNone(result.data['childOne']['nestedChildren'])
 
     def test_get_with_include_that_has_nested_child(self):
         # arrange

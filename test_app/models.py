@@ -71,7 +71,7 @@ class ChildClass(SimplifyModel):
 
 class NestedChild(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    child_one = models.ForeignKey('ChildClass', null=True, blank=True, related_name='nested_children')
+    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='nested_children')
 
 
 class LinkingClass(SimplifyModel):
