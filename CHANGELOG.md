@@ -1,3 +1,6 @@
+### 12/8/2020 1.3.26
+Fixed nested relation lookup returns null instead of exception.
+
 ### 2/5/2020 1.3.24
 Fixed `PostgresExecutorService` to not error working with a stored procedure without arguments.
 

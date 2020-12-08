@@ -344,7 +344,7 @@ class SQLEngineSerializer:
                 related_obj = getattr(field_obj, field)
                 view_model[field] = self.serialize_related(related_obj, related_items)
             else:
-                item_to_serialize = getattr(field_obj, field)
+                item_to_serialize = getattr(field_obj, field, None)
                 if item_to_serialize is not None:
                     # do we check if they are basic types and then not try and serialize?
                     if type(item_to_serialize) in [int, bool, str, float, dict]:
