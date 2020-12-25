@@ -239,8 +239,11 @@ class SimplifyView(APIView):
             filter_kwargs = {}
             exclude_filter_kwargs = {}
             isolated_filter_kwargs = {}
+            filterable_properties = {}
+            filterable_property_kwargs = {}
 
             filters = filters.split('|')
+            # todo: rename this
             for filter in filters:
                 exclude_filter = False
                 isolate_filter = False
@@ -254,7 +257,6 @@ class SimplifyView(APIView):
                     filterable_property = filter_name in self.model.get_filterable_properties().keys()
                 else:
                     filterable_property = False
-                filterable_properties = []
 
                 # snake case the name
                 filter_name = Mapper.camelcase_to_underscore(filter_name)
@@ -265,7 +267,6 @@ class SimplifyView(APIView):
 
                 if '__contains_all' in filter_name:
                     isolate_filter = True
-                    #filter_name = filter_name.replace('__contains_all', '')
 
                 # if filter is in model filters then add it to the kwargs
                 model_filters = self.model.get_filters()
@@ -289,8 +290,10 @@ class SimplifyView(APIView):
                                                                                      model_filters)
                         else:
                             if filterable_property:
-                                filterable_properties.append(
-                                    self.model.get_filterable_properties()[filter_name]['query'])
+                                filterable_property_query = self.model.get_filterable_properties()[filter_name]['query']
+                                filterable_properties[filter_name] = filterable_property_query
+                                filterable_property_kwargs[filter_name] = self.format_filter(filter_name, filter_value,
+                                                                                             model_filters)
                             elif 'revicontains' in filter_name:
                                 # create an annotation that is the field name + _rev and pass that to filter
                                 # with an F function to query each row in the db to see if it contains a substr
@@ -310,7 +313,7 @@ class SimplifyView(APIView):
 
             # filter out filterable properties
             if filterable_properties:
-                obj = obj.using(self.read_db).filter(*filterable_properties)
+                obj = obj.using(self.read_db).annotate(**filterable_properties).filter(**filterable_property_kwargs)
 
             for filter_name, filter_value in isolated_filter_kwargs.items():
                 filter_name = filter_name.replace('__contains_all', '')
@@ -374,7 +377,6 @@ class SimplifyView(APIView):
                 except:
                     pass
 
-
             body = list(obj.values(*fields))
 
             if order_by:
@@ -428,7 +430,7 @@ class SimplifyView(APIView):
                         item = body_items[0]
                         for difference in differences:
                             all_items = [body_item[difference] for body_item in body_items]
-                            if all (type(item) is dict for item in all_items):
+                            if all(type(item) is dict for item in all_items):
                                 # a little uniquefying magic, courtesy of stack overflow https://stackoverflow.com/a/7090833
                                 item[difference] = [
                                     dict(tupleized)

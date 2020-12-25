@@ -150,9 +150,15 @@ class PhaseGroup(SimplifyModel):
     def get_filterable_properties():
         return {
             'active': {
-                'query': models.Q(
-                    communities__community_applications__application_id=Application.get_lead_mgmt_application().id) & models.Q(
-                    communities__community_applications__active=True)
+                'query': models.Case(
+                    models.When(
+                        models.Q(
+                            communities__community_applications__application_id=Application.get_lead_mgmt_application().id,
+                            communities__community_applications__active=True),
+                        then=models.Value(True)),
+                    default=models.Value(False),
+                    output_field=models.BooleanField()
+                )
             }
         }
 
@@ -162,6 +168,10 @@ class PhaseGroup(SimplifyModel):
             'active': {
                 'type': bool,
                 'list': False
+            },
+            'id__in': {
+                'type': int,
+                'list': True
             }
         }
 
