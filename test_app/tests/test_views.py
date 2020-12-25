@@ -715,14 +715,15 @@ class FilterablePropertiesTests(unittest.TestCase):
     api_client = APIClient()
 
     def test_filterable_property_properly_filters(self):
+        # todo: this is a bad test due to how they are linked -- it can also cause issues expanding result set
         # arrange
         community_one = DataGenerator.set_up_community()
         community_two = DataGenerator.set_up_community(phase_group=community_one.phase_group)
         application = Application.get_lead_mgmt_application()
         community_application_one = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
-        community_application_two = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
+        community_application_two = DataGenerator.set_up_community_application(community=community_two, application=application, active=False)
 
-        url = '/phaseGroups?filters=active=True'
+        url = '/phaseGroups?filters=active=True|id__in={0}'.format(community_one.phase_group.id)
 
         # act
         result = self.api_client.get(url, format='json')
@@ -730,3 +731,20 @@ class FilterablePropertiesTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(len(result.data), 0)
+
+    def test_filterable_property_properly_filters_false_boolean(self):
+        # arrange
+        community_one = DataGenerator.set_up_community()
+        community_two = DataGenerator.set_up_community(phase_group=community_one.phase_group)
+        application = Application.get_lead_mgmt_application()
+        community_application_one = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
+        community_application_two = DataGenerator.set_up_community_application(community=community_two, application=application, active=True)
+
+        url = '/phaseGroups?filters=active=False|id__in={0}'.format(community_one.phase_group.id)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(result.data), 1)
