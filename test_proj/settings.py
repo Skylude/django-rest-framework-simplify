@@ -90,9 +90,14 @@ DATABASES = {
         'USER': 'test',
         'PASSWORD': 'test1234',
         'HOST': 'localhost',
-        'PORT': ''
+        'PORT': '',
+        'TEST': {
+            'MIRROR': 'default'
+        }
     }
 }
+
+DATABASE_ROUTERS = ['test_proj.router.TestAppRouter']
 
 # cache
 CACHES = {

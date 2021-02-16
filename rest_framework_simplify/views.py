@@ -26,9 +26,7 @@ from rest_framework_simplify.errors import ErrorMessages
 
 class SimplifyView(APIView):
 
-    def __init__(self, model, linked_objects=[], supported_methods=[], read_db='default', write_db='default'):
-        self.read_db = read_db
-        self.write_db = write_db
+    def __init__(self, model, linked_objects=[], supported_methods=[]):
         self.model = model
         self.supported_methods = supported_methods
         self.linked_objects = linked_objects
@@ -57,7 +55,7 @@ class SimplifyView(APIView):
                 return self.create_response(error_message=ErrorMessages.DELETE_NOT_SUPPORTED.format(self.model.__name__))
 
         try:
-            obj = self.model.objects.using(self.read_db).get(pk=pk)
+            obj = self.model.objects.get(pk=pk)
         except self.DoesNotExist:
             raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
@@ -72,15 +70,15 @@ class SimplifyView(APIView):
                     linked_object['sub_resource_name']: obj
                 }
                 # get the linking table items
-                linked_objs = linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs)
+                linked_objs = linked_object['linking_cls'].objects.filter(**kwargs)
                 for linked_obj in linked_objs:
-                    linked_obj.delete(using=self.read_db)
+                    linked_obj.delete()
 
             else:
                 pass
 
         if not delete_link_only:
-            obj.delete(using=self.write_db)
+            obj.delete()
 
         return self.create_response()
 
@@ -118,7 +116,7 @@ class SimplifyView(APIView):
                 empty_is_error = True
             # try to get the obj from db with no parent resource
             else:
-                obj = self.model.objects.using(self.read_db).filter(pk=pk)
+                obj = self.model.objects.filter(pk=pk)
                 is_single_result = True
                 empty_is_error = True
 
@@ -136,8 +134,8 @@ class SimplifyView(APIView):
 
                     linked_object = lives_on_parent_results[0]
                     child_id_field_name = linked_object['sub_resource_name']+'_id'
-                    child_id = linked_object['parent_cls'].objects.using(self.read_db).values(child_id_field_name).get(pk=parent_pk)[child_id_field_name]
-                    obj = self.model.objects.using(self.read_db).filter(pk=child_id)
+                    child_id = linked_object['parent_cls'].objects.values(child_id_field_name).get(pk=parent_pk)[child_id_field_name]
+                    obj = self.model.objects.filter(pk=child_id)
                     is_single_result = True
                     # there is no empty_is_error here to preserve legacy behavior of empty object in this specific case
                 else:
@@ -154,7 +152,7 @@ class SimplifyView(APIView):
                 # trying to get ALL items in DB
                 if 'GET_LIST' not in self.supported_methods:
                     return self.create_response(error_message=ErrorMessages.GET_LIST_NOT_SUPPORTED.format(self.model.__name__))
-                obj = self.model.objects.using(self.read_db).all()
+                obj = self.model.objects.all()
 
         # handle includes
         req_includes = request.query_params.get('include', [])
@@ -309,17 +307,17 @@ class SimplifyView(APIView):
                                 annotate_kwargs = {
                                     field_rev: Value(filter_value, output_field=CharField())
                                 }
-                                obj = obj.using(self.read_db).annotate(**annotate_kwargs)
+                                obj = obj.annotate(**annotate_kwargs)
                                 filter_kwargs[field_rev + '__icontains'] = F(field_name)
                             else:
                                 filter_kwargs[filter_name] = self.format_filter(filter_name,
                                                                                 filter_value, model_filters)
             # narrow down items with the filters
-            obj = obj.using(self.read_db).filter(**filter_kwargs)
+            obj = obj.filter(**filter_kwargs)
 
             # filter out filterable properties
             if filterable_properties:
-                obj = obj.using(self.read_db).annotate(**filterable_properties).filter(**filterable_property_kwargs)
+                obj = obj.annotate(**filterable_properties).filter(**filterable_property_kwargs)
 
             for filter_name, filter_value in isolated_filter_kwargs.items():
                 filter_name = filter_name.replace('__contains_all', '')
@@ -328,21 +326,21 @@ class SimplifyView(APIView):
                     kwargs = {
                         '{0}'.format(filter_name): filter_value[x]
                     }
-                    obj = obj.using(self.read_db).filter(**kwargs)
+                    obj = obj.filter(**kwargs)
 
             # exclude any items that shouldnt be in the final list
-            obj = obj.using(self.read_db).exclude(**exclude_filter_kwargs)
+            obj = obj.exclude(**exclude_filter_kwargs)
 
         # handle distinct
         distinct = request.query_params.get('distinct', False)
         if distinct:
-            obj = obj.using(self.read_db).distinct()
+            obj = obj.distinct()
 
         # handle ordering
         order_by = request.query_params.get('orderBy', None)
         if order_by:
             order_by = Mapper.camelcase_to_underscore(order_by)
-            obj = obj.using(self.read_db).order_by(order_by)
+            obj = obj.order_by(order_by)
 
         # handle paging Mr. Herman
         page = request.query_params.get('page', None)
@@ -351,7 +349,7 @@ class SimplifyView(APIView):
         data_only = request.query_params.get('noCount', None)
         total_items = None
         if count_only or (page_size and int(page_size) == 0):
-            total_items = obj.using(self.read_db).count()
+            total_items = obj.count()
             return self.create_response(body=[], serialize=True, include=None, exclude=None, fields=None,
                                         count=total_items, using_cache=False, cache_key=None, optimized_serialize=True)
 
@@ -362,7 +360,7 @@ class SimplifyView(APIView):
             if data_only:
                 total_items = -1
             else:
-                total_items = obj.using(self.read_db).count()
+                total_items = obj.count()
             page = int(page)
             page_size = int(page_size)
             start = (page - 1) * page_size
@@ -551,28 +549,28 @@ class SimplifyView(APIView):
                     # we have pk so we only need to check if the one linker exists
                     if pk:
                             kwargs[linked_object['sub_resource_name']] = pk
-                            if linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs).exists():
-                                return self.model.objects.using(read_db).filter(pk=pk)
+                            if linked_object['linking_cls'].objects.filter(**kwargs).exists():
+                                return self.model.objects.filter(pk=pk)
                             else:
                                 raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
                     else:
                         # get the linking table items
-                        linked_objs = linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs)
+                        linked_objs = linked_object['linking_cls'].objects.filter(**kwargs)
 
                         # go through linking table items and get the sub resources from each entry into a list
                         linked_obj_ids = linked_objs.values_list(linked_object['sub_resource_name'] + '__id', flat=True)
 
-                        return self.model.objects.using(self.read_db).filter(pk__in=linked_obj_ids)
+                        return self.model.objects.filter(pk__in=linked_obj_ids)
                 # no linking table and the link is on this obj itself
                 else:
                     # if we have a pk we only want the exact resource we are looking for
                     if pk:
                         kwargs['pk'] = pk
-                        return self.model.objects.using(self.read_db).filter(**kwargs)
+                        return self.model.objects.filter(**kwargs)
                     # no pk was passed in meaning we are getting the entire list of items that match the parent resource
                     else:
-                        return self.model.objects.using(self.read_db).filter(**kwargs)
+                        return self.model.objects.filter(**kwargs)
 
     def handle_exception(self, exc):
         status_code = status.HTTP_400_BAD_REQUEST
@@ -666,7 +664,7 @@ class SimplifyView(APIView):
             # check for reference fields to parse them into the model
             obj = self.model.parse(request.data, existing_id=id, reference_fields=reference_fields, request=request)
 
-        obj.cascade_save(write_db=self.write_db)
+        obj.cascade_save()
 
         # save linking table items -- todo: move this into cascade_save?
         if parent_pk and parent_resource and self.linked_objects:
@@ -674,7 +672,7 @@ class SimplifyView(APIView):
                 return self.create_response(error_message=ErrorMessages.POST_SUB_NOT_SUPPORTED(self.model.__name__))
 
             snake_cased_url_tail = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
-            self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
+            self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail)
 
         # save extra linkers
         links = request.query_params.get('links', None)
@@ -745,7 +743,7 @@ class SimplifyView(APIView):
             return None
 
     @staticmethod
-    def execute_on_linked_object(obj, linked_objects, passed_in_parent_resource, parent_pk, snake_cased_url_tail, write_db):
+    def execute_on_linked_object(obj, linked_objects, passed_in_parent_resource, parent_pk, snake_cased_url_tail):
         linking_class_results = [i for i in linked_objects if
                                  i['parent_resource'] == passed_in_parent_resource and i['linking_cls']]
         lives_on_parent_results = [i for i in linked_objects if 'lives_on_parent' in i
@@ -755,7 +753,7 @@ class SimplifyView(APIView):
             linked_object = lives_on_parent_results[0]
             parent_obj = linked_object['parent_cls'].objects.get(pk=parent_pk)
             setattr(parent_obj, linked_object['sub_resource_name'], obj)
-            parent_obj.save(using=write_db)
+            parent_obj.save()
         elif len(linking_class_results) > 0:
             linked_object = linking_class_results[0]
             parent_obj = linked_object['parent_cls'].objects.get(pk=parent_pk)
@@ -763,7 +761,7 @@ class SimplifyView(APIView):
             new_linking_obj = linked_object['linking_cls']()
             setattr(new_linking_obj, linked_object['parent_name'], parent_obj)
             setattr(new_linking_obj, linked_object['sub_resource_name'], obj)
-            new_linking_obj.save(using=write_db)
+            new_linking_obj.save()
 
 
 class SimplifyStoredProcedureView(APIView):

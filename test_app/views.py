@@ -63,13 +63,12 @@ class MetaDataClassHandler(SimplifyView):
 
 class ReadReplicaBasicClassHandler(SimplifyView):
     def __init__(self):
-        super().__init__(BasicClass, supported_methods=['GET'], read_db='readreplica')
+        super().__init__(BasicClass, supported_methods=['GET'])
 
 
 class SecondDatabaseBasicClassHandler(SimplifyView):
     def __init__(self):
-        super().__init__(BasicClass, supported_methods=['GET', 'POST', 'POST_SUB'],
-                         write_db='readreplica', read_db='readreplica')
+        super().__init__(BasicClass, supported_methods=['GET', 'POST', 'POST_SUB'])
 
 
 
