@@ -70,6 +70,8 @@ class Mapper:
             return new_dict
         elif isinstance(obj, list):
             new_list = []
+            if all(isinstance(item, int) for item in obj):
+                return obj
             for o in obj:
                 new_dict = {}
                 for key, value in o.items():

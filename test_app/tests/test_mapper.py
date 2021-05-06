@@ -17,6 +17,18 @@ class MapperTests(unittest.TestCase):
         val = Mapper.camelcase_to_underscore(camel_case)
         self.assertEqual(val, underscore)
 
+    def test_camelcase_to_underscore_array_of_numbers(self):
+        camel_case = {'camelCase': [1]}
+        underscore = {'camel_case': [1]}
+        val = Mapper.camelcase_to_underscore(camel_case)
+        self.assertEqual(val, underscore)
+
+    def test_camelcase_to_underscore_array_of_objects(self):
+        camel_case = {'camelCase': [{'camelCase': 1}]}
+        underscore = {'camel_case': [{'camel_case': 1}]}
+        val = Mapper.camelcase_to_underscore(camel_case)
+        self.assertEqual(val, underscore)
+
     def test_underscore_to_camelcase(self):
         underscore = 'camel_case'
         camel_case = 'camelCase'
