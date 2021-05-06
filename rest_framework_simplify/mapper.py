@@ -70,16 +70,21 @@ class Mapper:
             return new_dict
         elif isinstance(obj, list):
             new_list = []
-            if all(isinstance(item, int) or isinstance(item, str) for item in obj):
-                return obj
             for o in obj:
-                new_dict = {}
-                for key, value in o.items():
-                    underscore = Mapper.camelcase_to_underscore(key)
-                    if isinstance(value, dict) or isinstance(value, list):
-                        value = Mapper.camelcase_to_underscore(value)
-                    new_dict[underscore] = value
-                new_list.append(new_dict)
+                new_item = {}
+                if isinstance(o, int) or isinstance(o, str) or isinstance(o, bool):
+                    new_item = o
+                elif isinstance(o, list):
+                    new_item = Mapper.camelcase_to_underscore(o)
+                elif isinstance(o, dict):
+                    for key, value in o.items():
+                        underscore = Mapper.camelcase_to_underscore(key)
+                        if isinstance(value, dict) or isinstance(value, list):
+                            value = Mapper.camelcase_to_underscore(value)
+                        new_item[underscore] = value
+                else:
+                    raise ValueError('Unknown list item type')
+                new_list.append(new_item)
             return new_list
 
     @staticmethod
