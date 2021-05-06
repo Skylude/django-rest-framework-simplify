@@ -56,11 +56,23 @@ class MapperTests(unittest.TestCase):
         bool_type_value = False
         obj_type_value = {'camelCase': 1}
         ary_type_value = [int_type_value, obj_type_value]
-        underscore = MagicMock(obj_type_value={'camel_case': 1}, ary_type_value=[int_type_value, {'camel_case': 1}])
+        underscore_mock = MagicMock(obj_type_value={'camel_case': 1}, ary_type_value=[int_type_value, {'camel_case': 1}])
         camel_case = {'camelCase': [int_type_value, str_type_value, obj_type_value, ary_type_value, bool_type_value]}
-        underscore = {'camel_case': [int_type_value, str_type_value, underscore.obj_type_value, underscore.ary_type_value, bool_type_value]}
+        underscore = {'camel_case': [int_type_value, str_type_value, underscore_mock.obj_type_value, underscore_mock.ary_type_value, bool_type_value]}
         val = Mapper.camelcase_to_underscore(camel_case)
         self.assertEqual(val, underscore)
+
+    def test_underscore_to_camelcase_array_of_mixed_types(self):
+        int_type_value = random.randint(1, 10)
+        str_type_value = str(uuid.uuid4())[:4]
+        bool_type_value = False
+        obj_type_value = {'camel_case': 1}
+        ary_type_value = [int_type_value, obj_type_value]
+        camel_case_mock = MagicMock(obj_type_value={'camelCase': 1}, ary_type_value=[int_type_value, {'camelCase': 1}])
+        underscore = {'camel_case': [int_type_value, str_type_value, obj_type_value, ary_type_value, bool_type_value]}
+        camel_case = {'camelCase': [int_type_value, str_type_value, camel_case_mock.obj_type_value, camel_case_mock.ary_type_value, bool_type_value]}
+        val = Mapper.underscore_to_camelcase(underscore)
+        self.assertEqual(val, camel_case)
 
     def test_underscore_to_camelcase(self):
         underscore = 'camel_case'
