@@ -82,8 +82,6 @@ class Mapper:
                         if isinstance(value, dict) or isinstance(value, list):
                             value = Mapper.camelcase_to_underscore(value)
                         new_item[underscore] = value
-                else:
-                    raise ValueError('Unknown list item type')
                 new_list.append(new_item)
             return new_list
 
