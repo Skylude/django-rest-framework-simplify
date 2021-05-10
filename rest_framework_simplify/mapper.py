@@ -71,13 +71,18 @@ class Mapper:
         elif isinstance(obj, list):
             new_list = []
             for o in obj:
-                new_dict = {}
-                for key, value in o.items():
-                    underscore = Mapper.camelcase_to_underscore(key)
-                    if isinstance(value, dict) or isinstance(value, list):
-                        value = Mapper.camelcase_to_underscore(value)
-                    new_dict[underscore] = value
-                new_list.append(new_dict)
+                new_item = {}
+                if isinstance(o, list):
+                    new_item = Mapper.camelcase_to_underscore(o)
+                elif isinstance(o, dict):
+                    for key, value in o.items():
+                        underscore = Mapper.camelcase_to_underscore(key)
+                        if isinstance(value, dict) or isinstance(value, list):
+                            value = Mapper.camelcase_to_underscore(value)
+                        new_item[underscore] = value
+                else:
+                    new_item = o
+                new_list.append(new_item)
             return new_list
 
     @staticmethod
