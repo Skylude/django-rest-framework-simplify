@@ -77,6 +77,7 @@ jobs:
           name: PyPi Deploy
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              sudo pip install --upgrade pip
               sudo pip install twine
               python setup.py sdist
               twine upload --username "${PYPI_USERNAME}" --password "${PYPI_PASSWORD}" dist/*
