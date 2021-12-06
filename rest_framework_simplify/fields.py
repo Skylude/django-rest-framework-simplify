@@ -37,11 +37,11 @@ class SimplifyEncryptedField(models.Field):
             keys = [settings.SECRET_KEY]
         return keys
 
-    @cached_property
+    @property
     def algorithm(self):
         IV = Random.new().read(BLOCK_SIZE)
         if len(self.keys) > 0:
-            return AES.new(self.keys)
+            return AES.new(self.keys.encode(), AES.MODE_ECB)
 
     def get_internal_type(self):
         return self._internal_type
@@ -53,7 +53,7 @@ class SimplifyEncryptedField(models.Field):
             remainder = len(value) % BLOCK_SIZE
             pad_length = BLOCK_SIZE - remainder
             value += pad_length * '\0'
-            encrypted_value = self.algorithm.encrypt(value)
+            encrypted_value = self.algorithm.encrypt(value.encode())
             return connection.Database.Binary(encrypted_value)
 
     def from_db_value(self, value, expression, connection, context):

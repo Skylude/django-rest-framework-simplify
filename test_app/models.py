@@ -15,11 +15,11 @@ class BasicClass(SimplifyModel):
     active = models.BooleanField(null=False, default=True)
     created = models.DateTimeField(null=False, default=timezone.now)
     binary_field = models.BinaryField(null=True, blank=True, default=bytes('binarystring', 'utf-8'))
-    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_one')
-    child_two = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_two')
+    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_one', on_delete=models.CASCADE)
+    child_two = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_two', on_delete=models.CASCADE)
     exclude_field = models.CharField(max_length=25, null=True, blank=True)
     child_three = models.ManyToManyField('ChildClass', null=True, blank=True, related_name='basic_class_three')
-    model_with_sensitive_data = models.OneToOneField('ModelWithSensitiveData', null=True, blank=True)
+    model_with_sensitive_data = models.OneToOneField('ModelWithSensitiveData', null=True, blank=True, on_delete=models.CASCADE)
 
     change_tracking_fields = ['name', 'child_one']
 
@@ -71,13 +71,13 @@ class ChildClass(SimplifyModel):
 
 class NestedChild(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='nested_child')
+    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='nested_child', on_delete=models.CASCADE)
 
 
 class LinkingClass(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    basic_class = models.ForeignKey('BasicClass', null=False, related_name='linking_classes')
-    child_class = models.ForeignKey('ChildClass', null=False, related_name='linking_classes')
+    basic_class = models.ForeignKey('BasicClass', null=False, related_name='linking_classes', on_delete=models.CASCADE)
+    child_class = models.ForeignKey('ChildClass', null=False, related_name='linking_classes', on_delete=models.CASCADE)
 
 
 class MetaDataClass(SimplifyModel):
@@ -121,7 +121,7 @@ class RequestFieldSaveClass(SimplifyModel):
 
 class Community(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    phase_group = models.ForeignKey('PhaseGroup', null=False, blank=False, related_name='communities')
+    phase_group = models.ForeignKey('PhaseGroup', null=False, blank=False, related_name='communities', on_delete=models.CASCADE)
 
 
 class Application(SimplifyModel):
@@ -178,8 +178,8 @@ class PhaseGroup(SimplifyModel):
 
 class CommunityApplication(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    community = models.ForeignKey('Community', null=False, blank=False, related_name='community_applications')
-    application = models.ForeignKey('Application', null=False, blank=False, related_name='community_applications')
+    community = models.ForeignKey('Community', null=False, blank=False, related_name='community_applications', on_delete=models.CASCADE)
+    application = models.ForeignKey('Application', null=False, blank=False, related_name='community_applications', on_delete=models.CASCADE)
     active = models.BooleanField(null=False, default=True)
 
 
@@ -196,4 +196,4 @@ class ModelWithSensitiveData(SimplifyModel):
 class ModelWithParentResource(SimplifyModel):
     id = models.AutoField(primary_key=True)
     text_field = models.CharField(max_length=32, null=True, blank=True)
-    basic_class = models.ForeignKey('BasicClass', null=False, blank=False)
+    basic_class = models.ForeignKey('BasicClass', null=False, blank=False, on_delete=models.CASCADE)
