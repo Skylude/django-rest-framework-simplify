@@ -1,3 +1,9 @@
+### 12/6/2021 1.4.0
+[DJANGO UPGRADE]
+- Upgraded for official Django2.2 compatibility
+- Updated requirements
+- Valid for python3.6 and python3.7
+
 ### 12/8/2020 1.3.26
 Fixed nested relation lookup returns null instead of exception.
 
