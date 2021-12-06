@@ -1,8 +1,14 @@
+### 12/6/2021 1.4.1
+[PYTHON COMPATIBILITY]
+- Upgraded compatibility: `python3.6`, `python3.7`, `python3.8`, and `python3.9` now supported
+- (necessary) Dropped deprecated `pycrypto` library in favor of `pycryptodome`
+
 ### 12/6/2021 1.4.0
 [DJANGO UPGRADE]
-- Upgraded for official Django2.2 compatibility
-- Updated requirements
-- Valid for python3.6 and python3.7
+- Upgraded for official `Django2.2` compatibility
+- Updated requirements for `pymongo` and allow for loose resolution for `djangorestframework`
+	- this is necessary to continue to support `<python3.7`
+- Valid for `python3.6` and `python3.7`
 
 ### 12/8/2020 1.3.26
 Fixed nested relation lookup returns null instead of exception.
