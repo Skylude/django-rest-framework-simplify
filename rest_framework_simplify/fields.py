@@ -114,11 +114,6 @@ class SimplifyJsonTextField(models.TextField):
 
     def to_python(self, value):
         if isinstance(value, str):
-            try:
-                # assert we can load this value later
-                json.loads(value)
-            except Exception:
-                raise ValidationError('Invalid json string representation')
             return value
 
         if value is None:
