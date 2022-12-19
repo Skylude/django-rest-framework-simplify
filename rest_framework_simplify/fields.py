@@ -56,7 +56,7 @@ class SimplifyEncryptedField(models.Field):
             encrypted_value = self.algorithm.encrypt(value.encode())
             return connection.Database.Binary(encrypted_value)
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         if value is not None:
             value = bytes(value)
             decrypted_value = self.algorithm.decrypt(value).split(b'\0')[0]
@@ -97,10 +97,10 @@ class SimplifyJsonTextField(models.TextField):
         INVALID_DB_VALUE = 'Invalid db value for SimplifyJsonTextField instance: {0}'
         INVALID_PYTHON_VALUE = 'Invalid python value for SimplifyJsonTextField instance: {0}'
 
-    def __init__(self, *args, **kwargs):
-        super(models.TextField, self).__init__(*args, **kwargs)
+    def __init__(self, *args, db_collation=None, **kwargs):
+        super().__init__(*args, db_collation, **kwargs)
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         if value is None:
             return value
 
