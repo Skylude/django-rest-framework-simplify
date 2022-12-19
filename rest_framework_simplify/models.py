@@ -34,7 +34,7 @@ class SimplifyModel(DjangoModel):
         if hasattr(self, 'change_tracking_fields'):
             for x in self._meta.local_concrete_fields:
                 if x.name in self.change_tracking_fields:
-                    setattr(self, '_{0}_initial'.format(x.attname), getattr(self, x.attname))
+                    setattr(self, '_{0}_initial'.format(x.attname), self.__dict__.get(x.attname))
 
     def change_tracking_field_has_changed(self, field_name):
         if hasattr(self, 'change_tracking_fields') and field_name in self.change_tracking_fields:
