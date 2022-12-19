@@ -1,3 +1,7 @@
+### 12/16/2022 1.5.0
+[DJANGO UPGRADE]
+- Upgraded for official `Django3.2` compatibility
+
 ### 12/6/2021 1.4.1
 [PYTHON COMPATIBILITY]
 - Upgraded compatibility: `python3.6`, `python3.7`, `python3.8`, and `python3.9` now supported
