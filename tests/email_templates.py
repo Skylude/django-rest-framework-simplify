@@ -10,8 +10,10 @@ class EmailService:
     @staticmethod
     def send_email(form=None):
         # send your email here from the form
-        return {'id': 'agsjyfg7eg4j27', 'to': form.to, 'from': form._from,
-                'subject': form.subject, 'html': form.html}
+        return {
+            'id': 'agsjyfg7eg4j27', 'to': form.to, 'from': form._from,
+            'subject': form.subject, 'html': form.html,
+        }
 
 
 class DynamicEmailTemplate(EmailTemplateForm):
@@ -27,9 +29,9 @@ class DynamicEmailTemplate(EmailTemplateForm):
             'from': '"%[Team-Name]" <support@example.com>',
             'templateName': 'DynamicEmail',
             'templatePath': settings.EMAIL_TEMPLATES_BASE_PATH + 'DynamicEmail.html',
-            'sendEmailMethod': EmailService.send_email
+            'sendEmailMethod': EmailService.send_email,
         }
-        super(DynamicEmailTemplate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class DynamicEmailAndSubjectTemplate(EmailTemplateForm):
@@ -44,9 +46,9 @@ class DynamicEmailAndSubjectTemplate(EmailTemplateForm):
             'from': '"Our Team" <support@example.com>',
             'templateName': 'DynamicEmailAndSubject',
             'templatePath': settings.EMAIL_TEMPLATES_BASE_PATH + 'DynamicEmail.html',
-            'sendEmailMethod': EmailService.send_email
+            'sendEmailMethod': EmailService.send_email,
         }
-        super(DynamicEmailAndSubjectTemplate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class EmailWithExtraSimplifyMLTemplate(EmailTemplateForm):
@@ -59,9 +61,9 @@ class EmailWithExtraSimplifyMLTemplate(EmailTemplateForm):
             'from': '"Our Team" <support@example.com>',
             'templateName': 'EmailWithExtraSimplifyML',
             'templatePath': settings.EMAIL_TEMPLATES_BASE_PATH + 'EmailWithExtraSimplifyML.html',
-            'sendEmailMethod': EmailService.send_email
+            'sendEmailMethod': EmailService.send_email,
         }
-        super(EmailWithExtraSimplifyMLTemplate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class TemplateNameWithoutHtmlFileTemplate(EmailTemplateForm):
@@ -73,9 +75,9 @@ class TemplateNameWithoutHtmlFileTemplate(EmailTemplateForm):
             'from': '"Our Team" <support@example.com>',
             'templateName': 'TemplateNameWithoutHtmlFile',
             'templatePath': None,
-            'sendEmailMethod': EmailService.send_email
+            'sendEmailMethod': EmailService.send_email,
         }
-        super(TemplateNameWithoutHtmlFileTemplate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class TemplateNameWithInvalidHtmlFileTemplate(EmailTemplateForm):
@@ -87,9 +89,9 @@ class TemplateNameWithInvalidHtmlFileTemplate(EmailTemplateForm):
             'from': '"Our Team" <support@example.com>',
             'templateName': 'TemplateNameWithInvalidHtmlFile',
             'templatePath': settings.EMAIL_TEMPLATES_BASE_PATH + 'no-a-real-html-file.html',
-            'sendEmailMethod': EmailService.send_email
+            'sendEmailMethod': EmailService.send_email,
         }
-        super(TemplateNameWithInvalidHtmlFileTemplate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class TemplateWithoutSendEmailMethodTemplate(EmailTemplateForm):
@@ -102,6 +104,6 @@ class TemplateWithoutSendEmailMethodTemplate(EmailTemplateForm):
             'from': '"Our Team" <support@example.com>',
             'templateName': 'TemplateWithoutSendEmailMethod',
             'templatePath': settings.EMAIL_TEMPLATES_BASE_PATH + 'without-send-email-method.html',
-            'sendEmailMethod': None
+            'sendEmailMethod': None,
         }
-        super(TemplateWithoutSendEmailMethodTemplate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)

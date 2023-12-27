@@ -16,10 +16,10 @@ class TestSQLServerStoredProcForm(StoredProcedureForm):
             'password': 'test1234',
             'port': 1433,
             'engine': 'sqlserver',
-            'sp_name': 'TestStoredProcedure'
+            'sp_name': 'TestStoredProcedure',
         }
         # call base constructor
-        super(TestSQLServerStoredProcForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 # this should be a very generic form not a specific one
@@ -36,8 +36,7 @@ class PostgresFormatForm(StoredProcedureForm):
             'password': 'test1234',
             'port': 5432,
             'engine': 'postgres',
-            'sp_name': 'postgres_format'
+            'sp_name': 'postgres_format',
         }
         # call base constructor
-        super(PostgresFormatForm, self).__init__(*args, **kwargs)
-
+        super().__init__(*args, **kwargs)

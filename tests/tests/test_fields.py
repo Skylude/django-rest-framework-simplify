@@ -11,11 +11,8 @@ from django.core.exceptions import ValidationError
 
 from rest_framework_simplify.fields import SimplifyJsonTextField
 
-os.environ['DJANGO_SETTINGS_MODULE'] = 'test_proj.settings'
-django.setup()
-
-from test_app.tests.helpers import DataGenerator
-from test_app.models import EncryptedClass, EncryptedClassNoDisplayChars, JsonTextFieldClass
+from tests.tests.helpers import DataGenerator
+from tests.models import EncryptedClass, EncryptedClassNoDisplayChars, JsonTextFieldClass
 
 
 class CustomFieldTests(unittest.TestCase):
@@ -64,7 +61,8 @@ class CustomFieldTests(unittest.TestCase):
 
             # act
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text)
+                json_text=json_text,
+            )
 
             # assert
             self.assertTrue(mock_to_python.called)
@@ -75,7 +73,8 @@ class CustomFieldTests(unittest.TestCase):
             mock_from_db.return_value = []
             json_text = json.loads('[{ "description": "isn\'t it beautiful outside?" }]')
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text)
+                json_text=json_text,
+            )
 
             # act
             jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
@@ -87,7 +86,8 @@ class CustomFieldTests(unittest.TestCase):
             # arrange
             json_text = json.loads('[{ "description": "isn\'t it beautiful outside?" }]')
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text)
+                json_text=json_text,
+            )
 
             # act
             jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
@@ -98,9 +98,10 @@ class CustomFieldTests(unittest.TestCase):
 
         def test_json_text_field_returns_json_value_as_list_when_to_python_called_twice(self):
             # arrange
-            json_text = [{ "description": "isn\'t it beautiful outside?" }]
+            json_text = [{ "description": "isn\'t it beautiful outside?"}]
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text)
+                json_text=json_text,
+            )
 
             jt_class.json_text = json.dumps(json_text)
             jt_class.save()
@@ -116,7 +117,8 @@ class CustomFieldTests(unittest.TestCase):
             # arrange
             json_text = json.loads('{ "description": "isn\'t it beautiful outside?" }')
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text)
+                json_text=json_text,
+            )
 
             # act
             jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
@@ -129,7 +131,8 @@ class CustomFieldTests(unittest.TestCase):
             # arrange
             json_text = None
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text)
+                json_text=json_text,
+            )
 
             # act
             jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
@@ -143,10 +146,13 @@ class CustomFieldTests(unittest.TestCase):
 
             # act
             jt_class = DataGenerator.set_up_json_text_field_class(
-                json_text=json_text_in_db)
+                json_text=json_text_in_db,
+            )
 
             # act / assert
             with self.assertRaises(ValidationError) as ex:
                 jt_return = JsonTextFieldClass.objects.get(id=jt_class.id)
-            self.assertEqual(ex.exception.args[0], SimplifyJsonTextField.
-                             ErrorMessages.INVALID_DB_VALUE.format(json_text_in_db))
+            self.assertEqual(
+                ex.exception.args[0], SimplifyJsonTextField.
+                ErrorMessages.INVALID_DB_VALUE.format(json_text_in_db),
+            )

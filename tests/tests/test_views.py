@@ -3,10 +3,6 @@ import os
 import unittest.mock
 import uuid
 
-
-os.environ['DJANGO_SETTINGS_MODULE'] = 'test_proj.settings'
-django.setup()
-
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from decimal import Decimal
@@ -17,8 +13,8 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 
-from test_app.tests.helpers import DataGenerator
-from test_app.models import BasicClass, ChildClass, LinkingClass, Application
+from tests.tests.helpers import DataGenerator
+from tests.models import BasicClass, ChildClass, LinkingClass, Application
 
 
 class BasicClassTests(unittest.TestCase):
@@ -30,7 +26,7 @@ class BasicClassTests(unittest.TestCase):
     def test_delete(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClass/{0}'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}'
 
         # act
         result = self.api_client.delete(url, format='json')
@@ -45,7 +41,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         child_one = DataGenerator.set_up_child_class()
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
-        url = '/basicClass/{0}/childClass/{1}'.format(basic_class.id, child_one.id)
+        url = f'/basicClass/{basic_class.id}/childClass/{child_one.id}'
 
         # act
         result = self.api_client.delete(url, format='json')
@@ -59,7 +55,7 @@ class BasicClassTests(unittest.TestCase):
     def test_delete_sub_only_linking_class(self):
         # arrange
         linking_class = DataGenerator.set_up_linking_class()
-        url = '/basicClass/{0}/childClass/{1}?deleteLinkOnly=true'.format(linking_class.basic_class.id, linking_class.child_class.id)
+        url = f'/basicClass/{linking_class.basic_class.id}/childClass/{linking_class.child_class.id}?deleteLinkOnly=true'
 
         # act
         result = self.api_client.delete(url, format='json')
@@ -77,7 +73,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_with_cache(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClass/{0}'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -92,7 +88,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         child_one = DataGenerator.set_up_child_class()
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
-        url = '/basicClass/{0}/childOne'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}/childOne'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -106,7 +102,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClass/{0}'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -117,7 +113,7 @@ class BasicClassTests(unittest.TestCase):
 
     def test_get_list_paging_count_only(self):
         # arrange
-        basic_class_1, basic_class_2, basic_class_3 = [DataGenerator.set_up_basic_class() for x in range(3)]
+        basic_class_1, basic_class_2, basic_class_3 = (DataGenerator.set_up_basic_class() for x in range(3))
         url = '/basicClass?countOnly=True'
 
         # act
@@ -130,7 +126,7 @@ class BasicClassTests(unittest.TestCase):
 
     def test_get_list_paging_count_only_by_page_zero(self):
         # arrange
-        basic_class_1, basic_class_2, basic_class_3 = [DataGenerator.set_up_basic_class() for x in range(3)]
+        basic_class_1, basic_class_2, basic_class_3 = (DataGenerator.set_up_basic_class() for x in range(3))
         url = '/basicClass?page=1&pageSize=0'
 
         # act
@@ -143,7 +139,7 @@ class BasicClassTests(unittest.TestCase):
 
     def test_get_list_count_by_page_zero(self):
         # arrange
-        basic_class_1, basic_class_2, basic_class_3 = [DataGenerator.set_up_basic_class() for x in range(3)]
+        basic_class_1, basic_class_2, basic_class_3 = (DataGenerator.set_up_basic_class() for x in range(3))
         url = '/basicClass?pageSize=0'
 
         # act
@@ -156,7 +152,7 @@ class BasicClassTests(unittest.TestCase):
 
     def test_get_list_no_count(self):
         # arrange
-        basic_class_1, basic_class_2, basic_class_3 = [DataGenerator.set_up_basic_class() for x in range(3)]
+        basic_class_1, basic_class_2, basic_class_3 = (DataGenerator.set_up_basic_class() for x in range(3))
         url = '/basicClass?page=1&pageSize=3&noCount=true'
 
         # act
@@ -170,7 +166,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_meta(self):
         # arrange
         meta_data_class = DataGenerator.set_up_meta_data_class()
-        url = '/metaDataClass?meta=true'.format(meta_data_class.id)
+        url = f'/metaDataClass?meta=true'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -182,7 +178,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         child_one = DataGenerator.set_up_child_class()
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
-        url = '/basicClass/{0}/childOne'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}/childOne'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -194,7 +190,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_list_sub_with_no_child_resource(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(child_one=None)
-        url = '/basicClass/{0}/childOne'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}/childOne'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -205,9 +201,9 @@ class BasicClassTests(unittest.TestCase):
     def test_post_sub_resource_to_child_(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClasses/{0}/childOne'.format(basic_class.id)
+        url = f'/basicClasses/{basic_class.id}/childOne'
         body = {
-            'name': 'test 123'
+            'name': 'test 123',
         }
 
         # act
@@ -220,9 +216,9 @@ class BasicClassTests(unittest.TestCase):
     def test_post_sub_resource_to_linking_class(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClasses/{0}/childClass'.format(basic_class.id)
+        url = f'/basicClasses/{basic_class.id}/childClass'
         body = {
-            'name': 'test 123'
+            'name': 'test 123',
         }
 
         # act
@@ -236,9 +232,9 @@ class BasicClassTests(unittest.TestCase):
     def test_post_with_links_param(self):
         # arrange
         child_class = DataGenerator.set_up_child_class()
-        url = '/basicClass?links=linking_classes__child_class_id={}'.format(child_class.id)
+        url = f'/basicClass?links=linking_classes__child_class_id={child_class.id}'
         body = {
-            'name': 'test 123'
+            'name': 'test 123',
         }
 
         # act
@@ -252,9 +248,9 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
         child_class = DataGenerator.set_up_child_class()
-        url = '/basicClasses/{0}/childClass'.format(basic_class.id)
+        url = f'/basicClasses/{basic_class.id}/childClass'
         body = {
-            'id': child_class.id
+            'id': child_class.id,
         }
 
         # act
@@ -271,9 +267,9 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
         child_class = DataGenerator.set_up_child_class()
-        url = '/basicClasses/{0}/childClassNoLinker'.format(basic_class.id)
+        url = f'/basicClasses/{basic_class.id}/childClassNoLinker'
         body = {
-            'id': child_class.id
+            'id': child_class.id,
         }
 
         # act
@@ -281,13 +277,15 @@ class BasicClassTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'], ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
-                         format(ChildClass.__name__))
+        self.assertEqual(
+            result.data['errorMessage'], ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
+            format(ChildClass.__name__),
+        )
 
     def test_get_with_bool_filter_of_true(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(active=True)
-        url = '/basicClass?filters=active=True'.format(basic_class.id)
+        url = f'/basicClass?filters=active=True'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -298,7 +296,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_with_bool_filter_of_false(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(active=False)
-        url = '/basicClass?filters=active=False'.format(basic_class.id)
+        url = f'/basicClass?filters=active=False'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -309,7 +307,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_with_contains_all_filter_list(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(active=False)
-        url = '/basicClass?filters=child_three__id__contains_all={0}'.format(basic_class.child_three.first().id)
+        url = f'/basicClass?filters=child_three__id__contains_all={basic_class.child_three.first().id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -334,7 +332,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         child_class_one = DataGenerator.set_up_child_class()
         basic_class = DataGenerator.set_up_basic_class(child_one=child_class_one)
-        url = '/basicClass/{0}?fields=child_one_id'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}?fields=child_one_id'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -347,7 +345,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         model_with_sensitive_data = DataGenerator.set_up_model_with_sensitive_data()
         basic_class = DataGenerator.set_up_basic_class(model_with_sensitive_data=model_with_sensitive_data)
-        url = '/basicClass/{0}?include=model_with_sensitive_data'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}?include=model_with_sensitive_data'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -360,7 +358,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         child_one = DataGenerator.set_up_child_class('test')
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
-        url = '/basicClass/{0}?include=child_one__nested_child'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}?include=child_one__nested_child'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -374,7 +372,7 @@ class BasicClassTests(unittest.TestCase):
         child_one = DataGenerator.set_up_child_class('test')
         nested_child = DataGenerator.set_up_nested_child(child_one=child_one)
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
-        url = '/basicClass/{0}?include=child_one__nested_child'.format(basic_class.id)
+        url = f'/basicClass/{basic_class.id}?include=child_one__nested_child'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -388,7 +386,7 @@ class BasicClassTests(unittest.TestCase):
         basic_class = DataGenerator.set_up_basic_class()
         model = DataGenerator.set_up_model_with_parent_resource(basic_class=basic_class)
         other_model = DataGenerator.set_up_model_with_parent_resource()
-        url = '/basicClasses/{0}/modelWithParentResources/{1}'.format(other_model.id, model.id)
+        url = f'/basicClasses/{other_model.id}/modelWithParentResources/{model.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -400,7 +398,7 @@ class BasicClassTests(unittest.TestCase):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
         model = DataGenerator.set_up_model_with_parent_resource(basic_class=basic_class)
-        url = '/basicClasses/{0}/modelWithParentResources/{1}'.format(basic_class.id, model.id)
+        url = f'/basicClasses/{basic_class.id}/modelWithParentResources/{model.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -411,7 +409,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_with_icontains_does_not_work_in_reverse(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClasses?filters=name__icontains={0}'.format(basic_class.name + generate_str(7))
+        url = f'/basicClasses?filters=name__icontains={basic_class.name + generate_str(7)}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -423,7 +421,7 @@ class BasicClassTests(unittest.TestCase):
     def test_get_with_revicontains_matches(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/basicClasses?filters=name__revicontains={0}'.format(basic_class.name + generate_str(7))
+        url = f'/basicClasses?filters=name__revicontains={basic_class.name + generate_str(7)}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -440,7 +438,7 @@ class ReadReplicaTests(unittest.TestCase):
     def test_get_should_fail_if_data_in_default_db(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class()
-        url = '/readReplicaBasicClass/{0}'.format(basic_class.id)
+        url = f'/readReplicaBasicClass/{basic_class.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -452,7 +450,7 @@ class ReadReplicaTests(unittest.TestCase):
     def test_get_should_return_value_in_read_db_not_write_db(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(write_db='readreplica')
-        url = '/readReplicaBasicClass/{0}'.format(basic_class.id)
+        url = f'/readReplicaBasicClass/{basic_class.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -470,7 +468,7 @@ class SecondDatabaseBasicClassTests(unittest.TestCase):
         url = '/secondDatabaseBasicClass'
         name = generate_str(15)
         body = {
-            'name': name
+            'name': name,
         }
 
         # act
@@ -492,7 +490,7 @@ class StoredProcedureTests(unittest.TestCase):
         url = '/sqlStoredProcedures'
         body = {
             'spName': 'TestSQLServerStoredProc',
-            'testId': 1234
+            'testId': 1234,
         }
         mock_execute_stored_procedure.return_value = [{'amount': Decimal('612.0000')}]
 
@@ -507,7 +505,7 @@ class StoredProcedureTests(unittest.TestCase):
         # arrange
         url = '/sqlStoredProcedures'
         body = {
-            'spName': str(uuid.uuid4())[:15]
+            'spName': str(uuid.uuid4())[:15],
         }
 
         # act
@@ -515,14 +513,16 @@ class StoredProcedureTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyStoredProcedureView.ErrorMessages.INVALID_STORED_PROCEDURE.format(body['spName']))
+        self.assertEqual(
+            result.data['errorMessage'],
+            SimplifyStoredProcedureView.ErrorMessages.INVALID_STORED_PROCEDURE.format(body['spName']),
+        )
 
     def test_post_without_param_returns_invalid_params_error(self):
         # arrange
         url = '/sqlStoredProcedures'
         body = {
-            'spName': 'TestSQLServerStoredProc'
+            'spName': 'TestSQLServerStoredProc',
         }
 
         # act
@@ -530,8 +530,10 @@ class StoredProcedureTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyStoredProcedureView.ErrorMessages.INVALID_PARAMS.format(body['spName']))
+        self.assertEqual(
+            result.data['errorMessage'],
+            SimplifyStoredProcedureView.ErrorMessages.INVALID_PARAMS.format(body['spName']),
+        )
 
     @unittest.mock.patch('rest_framework_simplify.services.sql_executor.service.PostgresExecutorService.call_stored_procedure')
     def test_postgres(self, mock_execute_stored_procedure):
@@ -539,7 +541,7 @@ class StoredProcedureTests(unittest.TestCase):
         url = '/postgresStoredProcedures'
         body = {
             'spName': 'postgres_format',
-            'var_int': 1
+            'var_int': 1,
         }
         mock_execute_stored_procedure.return_value = [{'amount': Decimal('612.0000')}]
 
@@ -560,7 +562,7 @@ class EmailTemplateTests(unittest.TestCase):
         body = {
             'templateName': 'somethingRandom',
             'to': 'you@example.com',
-            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12',
         }
 
         # act
@@ -568,8 +570,10 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(body['templateName']))
+        self.assertEqual(
+            result.data['errorMessage'],
+            SimplifyEmailTemplateView.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(body['templateName']),
+        )
 
     def test_send_email_400_if_invalid_params(self):
         # arrange
@@ -577,7 +581,7 @@ class EmailTemplateTests(unittest.TestCase):
         body = {
             'templateName': 'DynamicEmail',
             'somethingWrong': 'you@example.com',
-            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12',
         }
 
         # act
@@ -585,8 +589,10 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.INVALID_PARAMS.format(body['templateName']))
+        self.assertEqual(
+            result.data['errorMessage'],
+            SimplifyEmailTemplateView.ErrorMessages.INVALID_PARAMS.format(body['templateName']),
+        )
 
     def test_send_email_400_if_cant_find_html_file(self):
         # arrange
@@ -601,8 +607,10 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.MISSING_EMAIL_TEMPLATE_PATH.format(body['templateName']))
+        self.assertEqual(
+            result.data['errorMessage'],
+            SimplifyEmailTemplateView.ErrorMessages.MISSING_EMAIL_TEMPLATE_PATH.format(body['templateName']),
+        )
 
     def test_send_email_400_if_rdml_still_in_html(self):
         # arrange
@@ -610,7 +618,7 @@ class EmailTemplateTests(unittest.TestCase):
         body = {
             'templateName': 'EmailWithExtraSimplifyML',
             'to': 'you@example.com',
-            'firstName': 'Chris'
+            'firstName': 'Chris',
         }
 
         # act
@@ -618,10 +626,12 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.UNABLE_TO_POPULATE_TEMPLATE.format(body['templateName'], 'Extra-Simplifyml'))
+        self.assertEqual(
+            result.data['errorMessage'],
+            SimplifyEmailTemplateView.ErrorMessages.UNABLE_TO_POPULATE_TEMPLATE.format(body['templateName'], 'Extra-Simplifyml'),
+        )
 
-    @unittest.mock.patch('test_app.email_templates.EmailService.send_email')
+    @unittest.mock.patch('tests.email_templates.EmailService.send_email')
     def test_send_email_400_if_send_email_fails(self, mock_send_email):
         # arrange
         url = '/sendEmail'
@@ -630,7 +640,7 @@ class EmailTemplateTests(unittest.TestCase):
             'to': 'you@example.com',
             'firstName': 'Chris',
             'teamName': 'Our Team',
-            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12',
         }
         mock_send_email.side_effect = Exception('test')
 
@@ -665,7 +675,7 @@ class EmailTemplateTests(unittest.TestCase):
             'to': 'you@example.com',
             'firstName': 'Chris',
             'teamName': 'Our Team',
-            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12',
         }
 
         # act
@@ -682,7 +692,7 @@ class OneToOneTests(unittest.TestCase):
     def test_get_one_to_one(self):
         # arrange
         oto = DataGenerator.set_up_ont_to_one_class()
-        url = '/oneToOne/{0}'.format(oto.alternative_id)
+        url = f'/oneToOne/{oto.alternative_id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -723,7 +733,7 @@ class FilterablePropertiesTests(unittest.TestCase):
         community_application_one = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
         community_application_two = DataGenerator.set_up_community_application(community=community_two, application=application, active=False)
 
-        url = '/phaseGroups?filters=active=True|id__in={0}'.format(community_one.phase_group.id)
+        url = f'/phaseGroups?filters=active=True|id__in={community_one.phase_group.id}'
 
         # act
         result = self.api_client.get(url, format='json')
@@ -740,7 +750,7 @@ class FilterablePropertiesTests(unittest.TestCase):
         community_application_one = DataGenerator.set_up_community_application(community=community_one, application=application, active=False)
         community_application_two = DataGenerator.set_up_community_application(community=community_two, application=application, active=True)
 
-        url = '/phaseGroups?filters=active=False|id__in={0}'.format(community_one.phase_group.id)
+        url = f'/phaseGroups?filters=active=False|id__in={community_one.phase_group.id}'
 
         # act
         result = self.api_client.get(url, format='json')

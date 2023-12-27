@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 
-from rest_framework_simplify.models import SimplifyModel
+from rest_framework_simplify.models.simplify_model import SimplifyModel
 from rest_framework_simplify.fields import SimplifyEncryptedCharField, SimplifyJsonTextField
 
 
@@ -32,25 +32,25 @@ class BasicClass(SimplifyModel):
         return {
             'active': {
                 'type': bool,
-                'list': False
+                'list': False,
             },
             'test_prop': {
                 'type': bool,
                 'list': False,
-                'property': True
+                'property': True,
             },
             'child_three__id__contains_all': {
                 'type': int,
-                'list': True
+                'list': True,
             },
             'name__icontains': {
                 'type': str,
-                'list': False
+                'list': False,
             },
             'name__revicontains': {
                 'type': str,
-                'list': False
-            }
+                'list': False,
+            },
         }
 
     @staticmethod
@@ -154,12 +154,14 @@ class PhaseGroup(SimplifyModel):
                     models.When(
                         models.Q(
                             communities__community_applications__application_id=Application.get_lead_mgmt_application().id,
-                            communities__community_applications__active=True),
-                        then=models.Value(True)),
+                            communities__community_applications__active=True,
+                        ),
+                        then=models.Value(True),
+                    ),
                     default=models.Value(False),
-                    output_field=models.BooleanField()
-                )
-            }
+                    output_field=models.BooleanField(),
+                ),
+            },
         }
 
     @staticmethod
@@ -167,12 +169,12 @@ class PhaseGroup(SimplifyModel):
         return {
             'active': {
                 'type': bool,
-                'list': False
+                'list': False,
             },
             'id__in': {
                 'type': int,
-                'list': True
-            }
+                'list': True,
+            },
         }
 
 

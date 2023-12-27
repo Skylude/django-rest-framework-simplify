@@ -1,28 +1,57 @@
+from random import randint
 import uuid
 
-from random import randint
-
-from test_app.models import *
+from tests.models import (
+    Application,
+    BasicClass,
+    ChildClass,
+    Community,
+    CommunityApplication,
+    EncryptedClass,
+    EncryptedClassNoDisplayChars,
+    JsonTextFieldClass,
+    LinkingClass,
+    MetaDataClass,
+    ModelWithParentResource,
+    ModelWithSensitiveData,
+    NestedChild,
+    OneToOneClass,
+    PhaseGroup,
+)
 
 
 class DataGenerator:
     @staticmethod
-    def set_up_basic_class(name=None, child_one=None, child_two=None, active=True, write_db='default',
-                           child_three_count=2, model_with_sensitive_data=None):
+    def set_up_basic_class(
+        name=None,
+        child_one=None,
+        child_two=None,
+        active=True,
+        write_db="default",
+        child_three_count=2,
+        model_with_sensitive_data=None,
+    ):
         if not name:
             name = str(uuid.uuid4())[:15]
 
-        basic_class = BasicClass(name=name, child_one=child_one, child_two=child_two, active=active,
-                                 model_with_sensitive_data=model_with_sensitive_data)
+        basic_class = BasicClass(
+            name=name,
+            child_one=child_one,
+            child_two=child_two,
+            active=active,
+            model_with_sensitive_data=model_with_sensitive_data,
+        )
 
         basic_class.save(using=write_db)
         for x in range(0, child_three_count):
-            basic_class.child_three.add(DataGenerator.set_up_child_class(write_db=write_db))
+            basic_class.child_three.add(
+                DataGenerator.set_up_child_class(write_db=write_db),
+            )
             basic_class.save(using=write_db)
         return basic_class
 
     @staticmethod
-    def set_up_child_class(name=None, write_db='default'):
+    def set_up_child_class(name=None, write_db="default"):
         if not name:
             name = str(uuid.uuid4())[:15]
 
@@ -31,7 +60,7 @@ class DataGenerator:
         return child_class
 
     @staticmethod
-    def set_up_nested_child(child_one=None, write_db='default'):
+    def set_up_nested_child(child_one=None, write_db="default"):
         nested_child = NestedChild(child_one=child_one)
         nested_child.save(using=write_db)
         return nested_child
@@ -57,7 +86,9 @@ class DataGenerator:
         if not value:
             value = str(uuid.uuid4())[:9]
 
-        encrypted_class_without_display_value = EncryptedClassNoDisplayChars(encrypted_val=value)
+        encrypted_class_without_display_value = EncryptedClassNoDisplayChars(
+            encrypted_val=value,
+        )
         encrypted_class_without_display_value.save()
         return encrypted_class_without_display_value
 
@@ -82,7 +113,9 @@ class DataGenerator:
     def set_up_model_with_sensitive_data():
         basic_text = str(uuid.uuid4())[:25]
         top_secret = str(uuid.uuid4())[:17]
-        model_with_sensitive_data = ModelWithSensitiveData(basic_text=basic_text, top_secret=top_secret)
+        model_with_sensitive_data = ModelWithSensitiveData(
+            basic_text=basic_text, top_secret=top_secret,
+        )
         model_with_sensitive_data.save()
         return model_with_sensitive_data
 
@@ -115,7 +148,9 @@ class DataGenerator:
         if not application:
             application = DataGenerator.set_up_application()
             application.save()
-        community_application = CommunityApplication(community=community, application=application, active=active)
+        community_application = CommunityApplication(
+            community=community, application=application, active=active,
+        )
         community_application.save()
         return community_application
 

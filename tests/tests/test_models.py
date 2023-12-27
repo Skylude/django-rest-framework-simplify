@@ -6,16 +6,13 @@ import uuid
 from rest_framework_simplify.errors import DjangoErrorMessages, ErrorMessages
 from rest_framework_simplify.exceptions import ParseException
 
-os.environ['DJANGO_SETTINGS_MODULE']='test_proj.settings'
-django.setup()
-
-from test_app.models import BasicClass, ChildClass
+from tests.models import BasicClass, ChildClass
 
 
 class BasicClassParserTests(unittest.TestCase):
     def test_parse_with_valid_data(self):
         request_data = {
-            'name': 'Justin'
+            'name': 'Justin',
         }
         basic_class = BasicClass.parse(request_data)
         self.assertIsNotNone(basic_class)
