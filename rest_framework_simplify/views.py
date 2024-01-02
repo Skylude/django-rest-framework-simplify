@@ -1,58 +1,48 @@
+from collections import OrderedDict
 import datetime
-import dateutil.parser
+from decimal import Decimal
 import logging
 import traceback
 
-from collections import OrderedDict
-from decimal import Decimal
+import dateutil.parser
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, CharField, Value
+from django.db.models import CharField, F, Value
 from django.db.models.fields.related import (
     ForeignKey,
-    OneToOneField,
-    ManyToOneRel,
     ManyToManyRel,
+    ManyToOneRel,
+    OneToOneField,
     OneToOneRel,
 )
 from rest_framework import exceptions
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
 
-from rest_framework_simplify.helpers import handle_bytes_decoding
-from rest_framework_simplify.mapper import Mapper
-from rest_framework_simplify.errors import ErrorMessages
+from .errors import ErrorMessages
+from .helpers import handle_bytes_decoding
+from .mapper import Mapper
+from .serializer import SQLEngineSerializer
 
 
 class SimplifyView(APIView):
     def __init__(
         self,
         model,
-        linked_objects=[],
-        supported_methods=[],
+        linked_objects=None,
+        supported_methods=None,
         read_db="default",
         write_db="default",
+        serializer=None,
     ):
         self.read_db = read_db
         self.write_db = write_db
         self.model = model
-        self.supported_methods = supported_methods
-        self.linked_objects = linked_objects
-        if self.get_db_engine() == "mongo":
-            from mongoengine.errors import DoesNotExist
-
-            self.DoesNotExist = DoesNotExist
-        else:
-            self.DoesNotExist = ObjectDoesNotExist
-        if self.get_db_engine() == "mongo":
-            from rest_framework_simplify.serializer.mongo import MongoEngineSerializer
-
-            self.serializer = MongoEngineSerializer
-        else:
-            from rest_framework_simplify.serializer.sql import SQLEngineSerializer
-
-            self.serializer = SQLEngineSerializer
+        self.supported_methods = supported_methods or []
+        self.linked_objects = linked_objects or []
+        self.serializer = serializer or SQLEngineSerializer
+        self.DoesNotExist = self.model.DoesNotExist
 
     def get_db_engine(self):
         if hasattr(self.model, "validate"):
@@ -122,7 +112,9 @@ class SimplifyView(APIView):
             result = cache.get(cache_key, None)
             if result:
                 return self.create_response(
-                    body=result, using_cache=True, cache_key=cache_key,
+                    body=result,
+                    using_cache=True,
+                    cache_key=cache_key,
                 )
 
         is_single_result = False
@@ -203,7 +195,9 @@ class SimplifyView(APIView):
                         )
                     # find the resource that this request is looking for
                     obj = self.get_obj_from_linked_objects(
-                        pk, parent_resource, parent_pk,
+                        pk,
+                        parent_resource,
+                        parent_pk,
                     )
                     if pk is not None:
                         is_single_result = True
@@ -395,11 +389,15 @@ class SimplifyView(APIView):
                     else:
                         if exclude_filter:
                             exclude_filter_kwargs[filter_name] = self.format_filter(
-                                filter_name, filter_value, model_filters,
+                                filter_name,
+                                filter_value,
+                                model_filters,
                             )
                         elif isolate_filter:
                             isolated_filter_kwargs[filter_name] = self.format_filter(
-                                filter_name, filter_value, model_filters,
+                                filter_name,
+                                filter_value,
+                                model_filters,
                             )
                         else:
                             if filterable_property:
@@ -414,7 +412,9 @@ class SimplifyView(APIView):
                                 filterable_property_kwargs[
                                     filter_name
                                 ] = self.format_filter(
-                                    filter_name, filter_value, model_filters,
+                                    filter_name,
+                                    filter_value,
+                                    model_filters,
                                 )
                             elif "revicontains" in filter_name:
                                 # create an annotation that is the field name + _rev and pass that to filter
@@ -424,7 +424,8 @@ class SimplifyView(APIView):
                                 field_rev = field_name + "_rev"
                                 annotate_kwargs = {
                                     field_rev: Value(
-                                        filter_value, output_field=CharField(),
+                                        filter_value,
+                                        output_field=CharField(),
                                     ),
                                 }
                                 obj = obj.using(self.read_db).annotate(
@@ -433,7 +434,9 @@ class SimplifyView(APIView):
                                 filter_kwargs[field_rev + "__icontains"] = F(field_name)
                             else:
                                 filter_kwargs[filter_name] = self.format_filter(
-                                    filter_name, filter_value, model_filters,
+                                    filter_name,
+                                    filter_value,
+                                    model_filters,
                                 )
             # narrow down items with the filters
             obj = obj.using(self.read_db).filter(**filter_kwargs)
@@ -622,7 +625,9 @@ class SimplifyView(APIView):
                 if len(body) == 0:
                     if empty_is_error:
                         raise self.DoesNotExist(
-                            ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk),
+                            ErrorMessages.DOES_NOT_EXIST.format(
+                                self.model.__name__, pk
+                            ),
                         )
                     body = {}
                 elif len(body) == 1:
@@ -648,7 +653,9 @@ class SimplifyView(APIView):
                 if len(body) == 0:
                     if empty_is_error:
                         raise self.DoesNotExist(
-                            ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk),
+                            ErrorMessages.DOES_NOT_EXIST.format(
+                                self.model.__name__, pk
+                            ),
                         )
                     body = {}
                 elif len(body) == 1:
@@ -730,7 +737,8 @@ class SimplifyView(APIView):
                         else:
                             raise self.DoesNotExist(
                                 ErrorMessages.DOES_NOT_EXIST.format(
-                                    self.model.__name__, pk,
+                                    self.model.__name__,
+                                    pk,
                                 ),
                             )
 
@@ -744,7 +752,8 @@ class SimplifyView(APIView):
 
                         # go through linking table items and get the sub resources from each entry into a list
                         linked_obj_ids = linked_objs.values_list(
-                            linked_object["sub_resource_name"] + "__id", flat=True,
+                            linked_object["sub_resource_name"] + "__id",
+                            flat=True,
                         )
 
                         return self.model.objects.using(self.read_db).filter(
@@ -763,7 +772,8 @@ class SimplifyView(APIView):
     def handle_exception(self, exc):
         status_code = status.HTTP_400_BAD_REQUEST
         if isinstance(
-            exc, (exceptions.NotAuthenticated, exceptions.AuthenticationFailed),
+            exc,
+            (exceptions.NotAuthenticated, exceptions.AuthenticationFailed),
         ):
             status_code = status.HTTP_403_FORBIDDEN
 
@@ -806,7 +816,8 @@ class SimplifyView(APIView):
 
         logger.error(error_message, extra=extra_logging)
         return self.create_response(
-            error_message=error_message, response_status=status_code,
+            error_message=error_message,
+            response_status=status_code,
         )
 
     def post(self, request, parent_resource=None, parent_pk=None):
@@ -929,7 +940,9 @@ class SimplifyView(APIView):
                 ).save()
 
         return self.create_response(
-            obj, response_status=status.HTTP_201_CREATED, serialize=True,
+            obj,
+            response_status=status.HTTP_201_CREATED,
+            serialize=True,
         )
 
     def put(self, request, pk):
@@ -961,7 +974,9 @@ class SimplifyView(APIView):
     ):
         if using_cache:
             response = Response(
-                body, status=status.HTTP_200_OK, content_type=content_type,
+                body,
+                status=status.HTTP_200_OK,
+                content_type=content_type,
             )
             response["Hit"] = 1
             return response
@@ -980,7 +995,9 @@ class SimplifyView(APIView):
             else:
                 if not optimized_serialize:
                     serializer = self.serializer(
-                        exclude=exclude, include=include, fields=fields,
+                        exclude=exclude,
+                        include=include,
+                        fields=fields,
                     )
                     body = serializer.serialize(body)
                 body = Mapper.dict_underscore_to_camelcase(body)
@@ -1054,7 +1071,8 @@ class SimplifyStoredProcedureView(APIView):
     def handle_exception(self, exc):
         status_code = status.HTTP_400_BAD_REQUEST
         if isinstance(
-            exc, (exceptions.NotAuthenticated, exceptions.AuthenticationFailed),
+            exc,
+            (exceptions.NotAuthenticated, exceptions.AuthenticationFailed),
         ):
             status_code = status.HTTP_403_FORBIDDEN
         error_message = exc.args[0]
@@ -1139,7 +1157,8 @@ class SimplifyEmailTemplateView(APIView):
     def handle_exception(self, exc):
         status_code = status.HTTP_400_BAD_REQUEST
         if isinstance(
-            exc, (exceptions.NotAuthenticated, exceptions.AuthenticationFailed),
+            exc,
+            (exceptions.NotAuthenticated, exceptions.AuthenticationFailed),
         ):
             status_code = status.HTTP_403_FORBIDDEN
         error_message = exc.args[0]

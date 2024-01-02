@@ -14,28 +14,29 @@ classifiers = ["Programming Language :: Python"]
 dependencies = [
   "appdirs==1.4.0",
   "blinker==1.4",
-  "bson==0.4.2",
   "Django>=3.2,<4.0",
   "djangorestframework",
   "pycryptodome",
   "pyparsing==2.1.10",
-  "python-dateutil==2.6.0",
-  "pytz==2016.1",
+  "python-dateutil",
+  "pytz",
   "requests==2.13.0",
-  "six==1.10.0",
+  "six",
 ]
 
 [project.optional-dependencies]
 pgdb = ["psycopg2<2.9"]
 mssql = ["pymssql"]
 mongo = [
+  "bson==0.4.2",
   "pymongo<4.0",
   "mongoengine>=0.9.0",
 ]
 tools = [
   "build",
+  "coverage",
   "pre-commit",
-  "ruff"
+  "ruff",
 ]
 dev = ["django-rest-framework-simplify[mssql, tools]"]
 
@@ -46,7 +47,7 @@ changelog = "https://github.com/Skylude/django-rest-framework-simplify/blob/mast
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["rest_framework_simplify*"]
-exclude = ["*.test*"]
+exclude = ["*tests*"]
 
 [tool.ruff]
 select = [

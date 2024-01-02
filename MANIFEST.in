@@ -1,4 +1,4 @@
-graft rest_framework_simplify
+include rest_framework_simplify
 global-exclude __pycache__
 global-exclude *.py[co]
 global-exclude *test_*.py

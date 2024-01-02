@@ -104,11 +104,6 @@ class SqlStoredProcedureHandler(SimplifyStoredProcedureView):
     def __init__(self, *args, **kwargs):
         # add items to kwargs
         kwargs["forms"] = forms
-        kwargs["server"] = "localhost"
-        kwargs["database"] = "test"
-        kwargs["username"] = "test"
-        kwargs["password"] = "test"
-        kwargs["port"] = 1433
         kwargs["engine"] = "sqlserver"
         super().__init__(*args, **kwargs)
 
@@ -117,11 +112,6 @@ class PostgresStoredProcedureHandler(SimplifyStoredProcedureView):
     def __init__(self, *args, **kwargs):
         # add items to kwargs
         kwargs["forms"] = forms
-        kwargs["server"] = "localhost"
-        kwargs["database"] = "test"
-        kwargs["username"] = "test"
-        kwargs["password"] = "test"
-        kwargs["port"] = 5432
         kwargs["engine"] = "postgres"
         super().__init__(*args, **kwargs)
 

@@ -26,39 +26,25 @@ class StoredProcedureForm(forms.Form):
             'postgres': PostgresStoredProcedureForm
         }
         self.sp_name = connection_data.get('sp_name', None)
-
         # make sure we are dealing with a supported engine
         engine = connection_data.get('engine', None)
         if engine not in self.supported_engines:
             error = 'NoneType' if not engine else engine
             raise EngineNotSupported(self.ErrorMessages.UNSUPPORTED_ENGINE_ERROR.format(error))
         self.engine = engine
-        self.connection_data = {
-            'server': connection_data.get('server', None),
-            'database': connection_data.get('database', None),
-            'username': connection_data.get('username', None),
-            'password': connection_data.get('password', None),
-            'port': connection_data.get('port', None)
-        }
+        self.database_name = kwargs.get("database_name", "default")
         self.__class__ = self.engine_map.get(self.engine, StoredProcedureForm)
 
     def execute_sp(self):
         # call stored procedure
         sp_service = SQLExecutorService(
-            self.connection_data['server'],
-            self.connection_data['database'],
-            self.connection_data['username'],
-            self.connection_data['password'],
-            port=self.connection_data['port'],
+            database_name=self.database_name,
             engine=self.engine
         )
         result = sp_service.call_stored_procedure(self.sp_name, self.format_params)
-
         for item in result:
             handle_bytes_decoding(item)
-
         return result
-
 
 
 class PostgresStoredProcedureForm(StoredProcedureForm):
@@ -66,15 +52,11 @@ class PostgresStoredProcedureForm(StoredProcedureForm):
     def format_params(self, sp_params):
         params = []
         for field in sp_params:
-            try:
-                # todo this could cause issues with someone wanting to pass in an empty string as a param
-                if self.cleaned_data[field] != '':
-                    params.append(self.cleaned_data[field])
-                else:
-                    params.append(None)
-            except KeyError:
-                # issue with data
-                raise KeyError
+            # todo this could cause issues with someone wanting to pass in an empty string as a param
+            if self.cleaned_data[field] != '':
+                params.append(self.cleaned_data[field])
+            else:
+                params.append(None)
         return params
 
 
@@ -83,12 +65,8 @@ class SQLServerStoredProcedureForm(StoredProcedureForm):
     def format_params(self, sp_params):
         params = []
         for field in sp_params:
-            try:
-                field_name = field.lstrip('@')
-                params.append(self.cleaned_data[field_name])
-            except KeyError:
-                # issue with data
-                raise KeyError
+            field_name = field.lstrip('@')
+            params.append(self.cleaned_data[field_name])
         return params
 
 

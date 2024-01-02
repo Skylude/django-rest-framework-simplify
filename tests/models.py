@@ -2,8 +2,11 @@ from django.db import models
 from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 
-from rest_framework_simplify.models.simplify_model import SimplifyModel
-from rest_framework_simplify.fields import SimplifyEncryptedCharField, SimplifyJsonTextField
+from rest_framework_simplify.models import SimplifyModel
+from rest_framework_simplify.fields import (
+    SimplifyEncryptedCharField,
+    SimplifyJsonTextField,
+)
 
 
 class BasicClass(SimplifyModel):
@@ -14,14 +17,32 @@ class BasicClass(SimplifyModel):
     name = models.CharField(max_length=15)
     active = models.BooleanField(null=False, default=True)
     created = models.DateTimeField(null=False, default=timezone.now)
-    binary_field = models.BinaryField(null=True, blank=True, default=bytes('binarystring', 'utf-8'))
-    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_one', on_delete=models.CASCADE)
-    child_two = models.OneToOneField('ChildClass', null=True, blank=True, related_name='basic_class_two', on_delete=models.CASCADE)
+    binary_field = models.BinaryField(
+        null=True, blank=True, default=bytes("binarystring", "utf-8")
+    )
+    child_one = models.OneToOneField(
+        "ChildClass",
+        null=True,
+        blank=True,
+        related_name="basic_class_one",
+        on_delete=models.CASCADE,
+    )
+    child_two = models.OneToOneField(
+        "ChildClass",
+        null=True,
+        blank=True,
+        related_name="basic_class_two",
+        on_delete=models.CASCADE,
+    )
     exclude_field = models.CharField(max_length=25, null=True, blank=True)
-    child_three = models.ManyToManyField('ChildClass', null=True, blank=True, related_name='basic_class_three')
-    model_with_sensitive_data = models.OneToOneField('ModelWithSensitiveData', null=True, blank=True, on_delete=models.CASCADE)
+    child_three = models.ManyToManyField(
+        "ChildClass", null=True, blank=True, related_name="basic_class_three"
+    )
+    model_with_sensitive_data = models.OneToOneField(
+        "ModelWithSensitiveData", null=True, blank=True, on_delete=models.CASCADE
+    )
 
-    change_tracking_fields = ['name', 'child_one']
+    change_tracking_fields = ["name", "child_one"]
 
     @property
     def test_prop(self):
@@ -30,36 +51,42 @@ class BasicClass(SimplifyModel):
     @staticmethod
     def get_filters():
         return {
-            'active': {
-                'type': bool,
-                'list': False,
+            "active": {
+                "type": bool,
+                "list": False,
             },
-            'test_prop': {
-                'type': bool,
-                'list': False,
-                'property': True,
+            "test_prop": {
+                "type": bool,
+                "list": False,
+                "property": True,
             },
-            'child_three__id__contains_all': {
-                'type': int,
-                'list': True,
+            "child_three__id__contains_all": {
+                "type": int,
+                "list": True,
             },
-            'name__icontains': {
-                'type': str,
-                'list': False,
+            "name__icontains": {
+                "type": str,
+                "list": False,
             },
-            'name__revicontains': {
-                'type': str,
-                'list': False,
+            "name__revicontains": {
+                "type": str,
+                "list": False,
             },
         }
 
     @staticmethod
     def get_includes():
-        return ['child_one__name', 'child_three', 'model_with_sensitive_data', 'child_one', 'child_one__nested_child']
+        return [
+            "child_one__name",
+            "child_three",
+            "model_with_sensitive_data",
+            "child_one",
+            "child_one__nested_child",
+        ]
 
     @staticmethod
     def get_excludes():
-        return ['exclude_field']
+        return ["exclude_field"]
 
 
 class ChildClass(SimplifyModel):
@@ -71,23 +98,39 @@ class ChildClass(SimplifyModel):
 
 class NestedChild(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    child_one = models.OneToOneField('ChildClass', null=True, blank=True, related_name='nested_child', on_delete=models.CASCADE)
+    child_one = models.OneToOneField(
+        "ChildClass",
+        null=True,
+        blank=True,
+        related_name="nested_child",
+        on_delete=models.CASCADE,
+    )
 
 
 class LinkingClass(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    basic_class = models.ForeignKey('BasicClass', null=False, related_name='linking_classes', on_delete=models.CASCADE)
-    child_class = models.ForeignKey('ChildClass', null=False, related_name='linking_classes', on_delete=models.CASCADE)
+    basic_class = models.ForeignKey(
+        "BasicClass",
+        null=False,
+        related_name="linking_classes",
+        on_delete=models.CASCADE,
+    )
+    child_class = models.ForeignKey(
+        "ChildClass",
+        null=False,
+        related_name="linking_classes",
+        on_delete=models.CASCADE,
+    )
 
 
 class MetaDataClass(SimplifyModel):
-    CHOICE_1 = 'one'
-    CHOICE_2 = 'two'
-    CHOICE_3 = 'three'
+    CHOICE_1 = "one"
+    CHOICE_2 = "two"
+    CHOICE_3 = "three"
     CHOICES = (
-        (CHOICE_1, 'One'),
-        (CHOICE_2, 'Two'),
-        (CHOICE_3, 'Three'),
+        (CHOICE_1, "One"),
+        (CHOICE_2, "Two"),
+        (CHOICE_3, "Three"),
     )
     id = models.AutoField(primary_key=True)
     choice = models.CharField(max_length=32, choices=CHOICES, default=CHOICE_2)
@@ -113,7 +156,7 @@ class OneToOneClass(SimplifyModel):
 
 
 class RequestFieldSaveClass(SimplifyModel):
-    REQUEST_FIELDS_TO_SAVE = [('method', 'method')]
+    REQUEST_FIELDS_TO_SAVE = [("method", "method")]
 
     id = models.AutoField(primary_key=True)
     method = models.CharField(max_length=32, null=False, blank=False)
@@ -121,7 +164,13 @@ class RequestFieldSaveClass(SimplifyModel):
 
 class Community(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    phase_group = models.ForeignKey('PhaseGroup', null=False, blank=False, related_name='communities', on_delete=models.CASCADE)
+    phase_group = models.ForeignKey(
+        "PhaseGroup",
+        null=False,
+        blank=False,
+        related_name="communities",
+        on_delete=models.CASCADE,
+    )
 
 
 class Application(SimplifyModel):
@@ -131,9 +180,9 @@ class Application(SimplifyModel):
     @staticmethod
     def get_lead_mgmt_application():
         try:
-            application = Application.objects.get(name='Lead Mgmt')
+            application = Application.objects.get(name="Lead Mgmt")
         except ObjectDoesNotExist:
-            application = Application(name='Lead Mgmt')
+            application = Application(name="Lead Mgmt")
             application.save()
         return application
 
@@ -144,13 +193,17 @@ class PhaseGroup(SimplifyModel):
     @property
     def active(self):
         some_id = Application.get_lead_mgmt_application().id
-        return bool(self.communities.community_applications.filter(application_id=some_id, active=True))
+        return bool(
+            self.communities.community_applications.filter(
+                application_id=some_id, active=True
+            )
+        )
 
     @staticmethod
     def get_filterable_properties():
         return {
-            'active': {
-                'query': models.Case(
+            "active": {
+                "query": models.Case(
                     models.When(
                         models.Q(
                             communities__community_applications__application_id=Application.get_lead_mgmt_application().id,
@@ -167,21 +220,33 @@ class PhaseGroup(SimplifyModel):
     @staticmethod
     def get_filters():
         return {
-            'active': {
-                'type': bool,
-                'list': False,
+            "active": {
+                "type": bool,
+                "list": False,
             },
-            'id__in': {
-                'type': int,
-                'list': True,
+            "id__in": {
+                "type": int,
+                "list": True,
             },
         }
 
 
 class CommunityApplication(SimplifyModel):
     id = models.AutoField(primary_key=True)
-    community = models.ForeignKey('Community', null=False, blank=False, related_name='community_applications', on_delete=models.CASCADE)
-    application = models.ForeignKey('Application', null=False, blank=False, related_name='community_applications', on_delete=models.CASCADE)
+    community = models.ForeignKey(
+        "Community",
+        null=False,
+        blank=False,
+        related_name="community_applications",
+        on_delete=models.CASCADE,
+    )
+    application = models.ForeignKey(
+        "Application",
+        null=False,
+        blank=False,
+        related_name="community_applications",
+        on_delete=models.CASCADE,
+    )
     active = models.BooleanField(null=False, default=True)
 
 
@@ -192,10 +257,12 @@ class ModelWithSensitiveData(SimplifyModel):
 
     @staticmethod
     def get_excludes():
-        return ['top_secret']
+        return ["top_secret"]
 
 
 class ModelWithParentResource(SimplifyModel):
     id = models.AutoField(primary_key=True)
     text_field = models.CharField(max_length=32, null=True, blank=True)
-    basic_class = models.ForeignKey('BasicClass', null=False, blank=False, on_delete=models.CASCADE)
+    basic_class = models.ForeignKey(
+        "BasicClass", null=False, blank=False, on_delete=models.CASCADE
+    )
