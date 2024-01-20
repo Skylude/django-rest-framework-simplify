@@ -446,6 +446,7 @@ class ReadReplicaTests(unittest.TestCase):
         result = self.api_client.get(url, format='json')
 
         # assert
+        print(result.data['errorMessage'])
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(result.data['errorMessage'], ErrorMessages.DOES_NOT_EXIST.format(BasicClass.__name__, basic_class.id))
 
@@ -699,13 +700,14 @@ class RequestFieldsToSaveTests(unittest.TestCase):
         # arrange
         url = '/requestFieldsToSaveClass'
         body = {
-
+            'method': 'asdf'
         }
 
         # act
         result = self.api_client.post(url, format='json')
 
         # assert
+        print(result)
         self.assertEqual(result.status_code, status.HTTP_201_CREATED)
         self.assertEqual(result.data['method'], 'POST')
 

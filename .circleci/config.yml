@@ -6,15 +6,24 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: circleci/python:3.6.5
-      - image: circleci/postgres:9.6.2
+      - image: cimg/python:3.11.2
         environment:
-        - POSTGRES_USER=test
+          TEST_DATABASE_URL: postgresql://postgres@localhost/circle_test
+      - image: cimg/postgres:12.8
+        environment:
+          POSTGRES_USER=postgres
 
     working_directory: ~/django-rest-framework-simplify
 
     steps:
       - checkout
+
+      - run: sudo apt-get update
+      - run: |
+          sudo apt-get install postgresql-client
+          createuser test -h localhost -U postgres -d
+          createdb -h localhost -U postgres drfsimp -O test
+          createdb -h localhost -U postgres drfsimp_rr -O test
 
       # need to install pyodbc dependency
       #- run:
@@ -22,7 +31,7 @@ jobs:
       #    command: |
       #      sudo apt-get install software-properties-common python-software-properties
       #      sudo apt-get update
-      #      sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3 freetds-dev
+     #      sudo apt-get install python3-dev unixodbc unixodbc-dev unixodbc-bin tdsodbc libstdc++6 libffi-dev libgss3 freetds-dev
       #      tar -xvzf ~/django-rest-framework-simplify/deps/msodbcsql-13.0.0.0.tar.gz
       #      sed -i 's/uname \-p/uname \-m/g' ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh
       #      ~/django-rest-framework-simplify/msodbcsql-13.0.0.0/build_dm.sh --accept-warning
@@ -56,21 +65,20 @@ jobs:
             - ./venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}
 
+      - run:
+          name: run migrations
+          command: |
+            . venv/bin/activate
+            python manage.py migrate
+            python manage.py migrate --database=readreplica
+
       # run tests!
       - run:
           name: run tests
           command: |
             mkdir xunit
             . venv/bin/activate
-            python manage.py test --with-xunit --xunit-file=./xunit/xunit.xml
-
-      # store test results
-      - store_test_results:
-          path: ./xunit
-
-      # store xml test artifacts
-      - store_artifacts:
-          path: ./xunit
+            python manage.py test
 
       # deploy to pypi
       - deploy:
