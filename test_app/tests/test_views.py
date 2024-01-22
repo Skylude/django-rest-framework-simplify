@@ -699,7 +699,7 @@ class RequestFieldsToSaveTests(unittest.TestCase):
         # arrange
         url = '/requestFieldsToSaveClass'
         body = {
-            'method': 'asdf'
+
         }
 
         # act
