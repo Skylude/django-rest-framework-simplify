@@ -1,3 +1,7 @@
+### 1/22/2024 4.0.0
+[DJANGO UPGRADE]
+- Upgraded for official `Django4.2` compatibility
+
 ### 12/16/2022 1.5.0
 [DJANGO UPGRADE]
 - Upgraded for official `Django3.2` compatibility
