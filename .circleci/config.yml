@@ -88,5 +88,5 @@ jobs:
               sudo pip install --upgrade pip
               sudo pip install twine
               python setup.py sdist
-              twine upload --username "${PYPI_USERNAME}" --password "${PYPI_PASSWORD}" dist/*
+              twine upload --username __token__ --password "${PYPI_API_TOKEN}" dist/*
             fi
