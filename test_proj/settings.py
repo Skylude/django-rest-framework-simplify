@@ -79,17 +79,17 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'drfsimp',
         'USER': 'test',
-        'PASSWORD': 'test1234',
+        'PASSWORD': 'test',
         'HOST': 'localhost',
-        'PORT': ''
+        'PORT': '5432'
     },
     'readreplica': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'drfsimp_rr',
         'USER': 'test',
-        'PASSWORD': 'test1234',
+        'PASSWORD': 'test',
         'HOST': 'localhost',
-        'PORT': ''
+        'PORT': '5432'
     }
 }
 
@@ -131,6 +131,3 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 STATIC_URL = '/static/'
-
-# set test runner to nose
-TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'

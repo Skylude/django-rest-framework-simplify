@@ -13,13 +13,12 @@ from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from mongoengine.errors import DoesNotExist
 
 from rest_framework_simplify.exceptions import ParseException
 from rest_framework_simplify.helpers import binary_string_to_string
 from rest_framework_simplify.helpers import handle_bytes_decoding
 from rest_framework_simplify.mapper import Mapper
-from rest_framework_simplify.serializer import MongoEngineSerializer, SQLEngineSerializer
+from rest_framework_simplify.serializer import SQLEngineSerializer
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
 from rest_framework_simplify.errors import ErrorMessages
 
@@ -32,20 +31,11 @@ class SimplifyView(APIView):
         self.model = model
         self.supported_methods = supported_methods
         self.linked_objects = linked_objects
-        if self.get_db_engine() == 'mongo':
-            self.DoesNotExist = DoesNotExist
-        else:
-            self.DoesNotExist = ObjectDoesNotExist
-        if self.get_db_engine() == 'mongo':
-            self.serializer = MongoEngineSerializer
-        else:
-            self.serializer = SQLEngineSerializer
+        self.DoesNotExist = ObjectDoesNotExist
+        self.serializer = SQLEngineSerializer
 
     def get_db_engine(self):
-        if hasattr(self.model, 'validate'):
-            return 'mongo'
-        else:
-            return 'sql'
+        return 'sql'
 
     def delete(self, request, pk=None, parent_resource=None, parent_pk=None):
         if parent_pk and parent_resource and self.linked_objects:

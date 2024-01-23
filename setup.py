@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='django-rest-framework-simplify',
-    version='1.5.1.dev1',
+    version='4.0.0.dev1',
     description='Django Rest Framework Simplify',
     author='Skyler Cain',
     author_email='skylercain@gmail.com',
@@ -13,11 +13,8 @@ setup(
         'blinker',
         'Django',
         'djangorestframework',
-        'mongoengine',
         'packaging',
         'psycopg2',
-        'pycryptodome',
-        'pymongo',
         'pymssql',
         'pyparsing',
         'python-dateutil',

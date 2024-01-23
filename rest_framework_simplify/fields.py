@@ -7,7 +7,7 @@ import base64
 from django.conf import settings
 from django.core.exceptions import FieldError, ImproperlyConfigured, ValidationError
 from django.db import models
-from django.utils.encoding import force_bytes, force_text
+from django.utils.encoding import force_bytes, force_str
 from django.utils.functional import cached_property
 
 BLOCK_SIZE = 16
@@ -64,7 +64,7 @@ class SimplifyEncryptedField(models.Field):
 
     def to_python(self, value):
         if value is not None:
-            value = force_text(value)
+            value = force_str(value)
             if hasattr(self, 'display_chars') and self.display_chars != 0:
                 value = value[self.display_chars:]
 

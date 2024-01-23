@@ -108,7 +108,6 @@ class EmailTemplateForm(forms.Form):
         default_data = kwargs.pop('default_data', None)
         super(EmailTemplateForm, self).__init__(*args, **kwargs)
         # setup template
-        self.template_name = default_data.get('template_name', None)
         self.default_data = {
             'subject': default_data.get('subject', None),
             'from': default_data.get('from', None),
