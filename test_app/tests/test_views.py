@@ -300,7 +300,6 @@ class BasicClassTests(unittest.TestCase):
             result.data['errorMessage'],
         )
 
-
     def test_get_with_bool_filter_of_true(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(active=True)
