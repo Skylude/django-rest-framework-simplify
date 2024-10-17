@@ -259,3 +259,11 @@ urlpatterns = [
 
 Now we can:
  * POST `/sendEmail` `{'templateName': 'DynamicEmail', 'to': 'to_address@test.com', 'firstName': 'Chris', 'signUpUrl': 'https://github.com/Skylude/django-rest-framework-simplify', 'teamName': 'My Team'}` => This will create the email and call `EmailService.send_email` with your form data. You can then choose what to do with that.
+
+
+### Settings
+```python
+REST_FRAMEWORK_SIMPLIFY_RAISE_INVALID_FILTERS = False
+```
+If this setting is True any filters that are passed in the request will be validated against the model get_filters and get_filterable_properties functions. If not found a 400 Bad Request error will be thrown with the filter field name in the error message.
+

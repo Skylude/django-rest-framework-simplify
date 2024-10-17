@@ -5,6 +5,7 @@ import traceback
 
 from collections import OrderedDict
 from decimal import Decimal
+from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F, CharField, Value
@@ -21,6 +22,8 @@ from rest_framework_simplify.mapper import Mapper
 from rest_framework_simplify.serializer import SQLEngineSerializer
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
 from rest_framework_simplify.errors import ErrorMessages
+
+logger = logging.getLogger(__name__)
 
 
 class SimplifyView(APIView):
@@ -258,7 +261,12 @@ class SimplifyView(APIView):
 
                 # if filter is in model filters then add it to the kwargs
                 if filter_name not in model_filters.keys() and filter_name not in model_filterable_properties.keys():
-                    return self.create_response(error_message=ErrorMessages.INVALID_FILTER_PARAM.format(filter_name))
+                    logger.error(ErrorMessages.INVALID_FILTER_PARAM.format(filter_name))
+                    raise_invalid_filters = getattr(settings, 'REST_FRAMEWORK_SIMPLIFY_RAISE_INVALID_FILTERS', False)
+                    if raise_invalid_filters:
+                        return self.create_response(
+                            error_message=ErrorMessages.INVALID_FILTER_PARAM.format(filter_name)
+                        )
                 if filter_name in model_filters.keys():
                     if model_filters[filter_name]['list']:
                         filter_value = [self.format_filter(filter_name, item, model_filters) for item in filter_value.split(',')]

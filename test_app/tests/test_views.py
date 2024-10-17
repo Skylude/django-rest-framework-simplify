@@ -9,6 +9,7 @@ django.setup()
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 from decimal import Decimal
 from rest_framework_simplify.errors import ErrorMessages
 from rest_framework_simplify.helpers import generate_str
@@ -284,7 +285,8 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(result.data['errorMessage'], ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
                          format(ChildClass.__name__))
 
-    def test_get_with_invalid_filter_throws(self):
+    @unittest.mock.patch('rest_framework_simplify.views.logger.error')
+    def test_get_with_invalid_filter_logs(self, mock_logger_error):
         # arrange
         invalid_filter = 'bad_filter'
         basic_class = DataGenerator.set_up_basic_class(active=True)
@@ -294,10 +296,26 @@ class BasicClassTests(unittest.TestCase):
         result = self.api_client.get(url, format='json')
 
         # assert
-        self.assertTrue(result.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(result.status_code, status.HTTP_200_OK)
+        mock_logger_error.assert_called_once_with(
+            ErrorMessages.INVALID_FILTER_PARAM.format(invalid_filter)
+        )
+
+    def test_get_with_invalid_filter_throws(self):
+        # arrange
+        invalid_filter = 'bad_filter'
+        settings.REST_FRAMEWORK_SIMPLIFY_RAISE_INVALID_FILTERS = True
+        basic_class = DataGenerator.set_up_basic_class(active=True)
+        url = '/basicClass?filters={0}=True'.format(invalid_filter)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            ErrorMessages.INVALID_FILTER_PARAM.format(invalid_filter),
             result.data['errorMessage'],
+            ErrorMessages.INVALID_FILTER_PARAM.format(invalid_filter),
         )
 
     def test_get_with_bool_filter_of_true(self):
