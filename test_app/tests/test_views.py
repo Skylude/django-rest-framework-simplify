@@ -7,6 +7,7 @@ import uuid
 os.environ['DJANGO_SETTINGS_MODULE'] = 'test_proj.settings'
 django.setup()
 
+from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from decimal import Decimal
@@ -356,8 +357,26 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertNotIn('topSecret', result.data['modelWithSensitiveData'].keys())
 
+    @unittest.mock.patch('rest_framework_simplify.views.logger.error')
+    def test_get_with_bad_include_logs(self, mock_logger_error):
+        # arrange
+        bad_include = 'bad_include'
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClass/{0}?include={1}'.format(basic_class.id, bad_include)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_200_OK, result.status_code)
+        mock_logger_error.assert_called_once_with(
+            ErrorMessages.INVALID_INCLUDE_PARAM.format(bad_include)
+        )
+
     def test_get_with_bad_include_throws(self):
         # arrange
+        settings.REST_FRAMEWORK_SIMPLIFY_RAISE_INVALID_INCLUDES = True
+
         bad_include = 'bad_include'
         basic_class = DataGenerator.set_up_basic_class()
         url = '/basicClass/{0}?include={1}'.format(basic_class.id, bad_include)
