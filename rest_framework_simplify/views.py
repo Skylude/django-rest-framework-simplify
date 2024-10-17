@@ -5,6 +5,7 @@ import traceback
 
 from collections import OrderedDict
 from decimal import Decimal
+from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F, CharField, Value
@@ -21,6 +22,8 @@ from rest_framework_simplify.mapper import Mapper
 from rest_framework_simplify.serializer import SQLEngineSerializer
 from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
 from rest_framework_simplify.errors import ErrorMessages
+
+logger = logging.getLogger(__name__)
 
 
 class SimplifyView(APIView):
@@ -148,12 +151,21 @@ class SimplifyView(APIView):
 
         # handle includes
         req_includes = request.query_params.get('include', [])
+        model_includes = getattr(self.model, 'get_includes', lambda: [])()
         if req_includes:
             req_includes = req_includes.split(',')
             if type(req_includes) is not list:
                 req_includes = [req_includes]
-        model_includes = self.model.get_includes() if hasattr(self.model, 'get_includes') else []
-        include = [Mapper.camelcase_to_underscore(include.strip()) for include in req_includes if Mapper.camelcase_to_underscore(include.strip()) in model_includes]
+        include = []
+        for r_include in req_includes:
+            snake_include_name = Mapper.camelcase_to_underscore(r_include.strip())
+            if snake_include_name not in model_includes:
+                msg = ErrorMessages.INVALID_INCLUDE_PARAM.format(snake_include_name)
+                logger.error(msg)
+                raise_invalid_includes = getattr(settings, 'REST_FRAMEWORK_SIMPLIFY_RAISE_INVALID_INCLUDES', False)
+                if raise_invalid_includes:
+                    return self.create_response(error_message=msg)
+            include.append(snake_include_name)
 
         # handle fields
         # if they explicitly ask for the field do we need to make them pass includes as well? currently yes
