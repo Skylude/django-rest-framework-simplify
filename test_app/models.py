@@ -127,6 +127,7 @@ class Community(SimplifyModel):
 class Application(SimplifyModel):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=32)
+    active = models.BooleanField(default=True)
 
     @staticmethod
     def get_lead_mgmt_application():

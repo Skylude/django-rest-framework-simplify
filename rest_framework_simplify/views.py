@@ -225,6 +225,8 @@ class SimplifyView(APIView):
 
         # gefilter fish
         filters = request.query_params.get('filters', [])
+        model_filters = getattr(self.model, 'get_filters', lambda: {})()
+        model_filterable_properties = getattr(self.model, 'get_filterable_properties', lambda: {})()
         if filters:
             filter_kwargs = {}
             exclude_filter_kwargs = {}
@@ -242,11 +244,7 @@ class SimplifyView(APIView):
                 filter_name = filter_array[0]
                 filter_value = filter_array[1] if len(filter_array) > 1 else None
 
-                # check if this is a filterable property
-                if hasattr(self.model, 'get_filterable_properties'):
-                    filterable_property = filter_name in self.model.get_filterable_properties().keys()
-                else:
-                    filterable_property = False
+                filterable_property = filter_name in model_filterable_properties.keys()
 
                 # snake case the name
                 filter_name = Mapper.camelcase_to_underscore(filter_name)
@@ -259,7 +257,8 @@ class SimplifyView(APIView):
                     isolate_filter = True
 
                 # if filter is in model filters then add it to the kwargs
-                model_filters = self.model.get_filters()
+                if filter_name not in model_filters.keys() and filter_name not in model_filterable_properties.keys():
+                    return self.create_response(error_message=ErrorMessages.INVALID_FILTER_PARAM.format(filter_name))
                 if filter_name in model_filters.keys():
                     if model_filters[filter_name]['list']:
                         filter_value = [self.format_filter(filter_name, item, model_filters) for item in filter_value.split(',')]
@@ -270,7 +269,7 @@ class SimplifyView(APIView):
                         elif isolate_filter:
                             isolated_filter_kwargs[filter_name] = filter_value
                         elif filterable_property:
-                            filterable_property_query = self.model.get_filterable_properties()[filter_name]['query']
+                            filterable_property_query = filterable_properties[filter_name]['query']
                             # todo: i don't like this but don't have the time to make this better
                             # todo: if we are annotating we should automatically account for the __in
                             filterable_properties[filter_name.rstrip('__in')] = filterable_property_query
@@ -286,7 +285,7 @@ class SimplifyView(APIView):
                                                                                      model_filters)
                         else:
                             if filterable_property:
-                                filterable_property_query = self.model.get_filterable_properties()[filter_name]['query']
+                                filterable_property_query = model_filterable_properties[filter_name]['query']
                                 filterable_properties[filter_name] = filterable_property_query
                                 filterable_property_kwargs[filter_name] = self.format_filter(filter_name, filter_value,
                                                                                              model_filters)
