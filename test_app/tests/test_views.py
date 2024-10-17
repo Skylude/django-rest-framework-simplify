@@ -356,6 +356,19 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertNotIn('topSecret', result.data['modelWithSensitiveData'].keys())
 
+    def test_get_with_bad_include_throws(self):
+        # arrange
+        bad_include = 'bad_include'
+        basic_class = DataGenerator.set_up_basic_class()
+        url = '/basicClass/{0}?include={1}'.format(basic_class.id, bad_include)
+
+        # act
+        result = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(status.HTTP_400_BAD_REQUEST, result.status_code)
+        self.assertEqual(ErrorMessages.INVALID_INCLUDE_PARAM.format(bad_include), result.data['errorMessage'])
+
     def test_get_with_include_that_has_no_nested_child_returns_null(self):
         # arrange
         child_one = DataGenerator.set_up_child_class('test')

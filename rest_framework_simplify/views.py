@@ -148,12 +148,17 @@ class SimplifyView(APIView):
 
         # handle includes
         req_includes = request.query_params.get('include', [])
+        model_includes = getattr(self.model, 'get_includes', lambda: [])()
         if req_includes:
             req_includes = req_includes.split(',')
             if type(req_includes) is not list:
                 req_includes = [req_includes]
-        model_includes = self.model.get_includes() if hasattr(self.model, 'get_includes') else []
-        include = [Mapper.camelcase_to_underscore(include.strip()) for include in req_includes if Mapper.camelcase_to_underscore(include.strip()) in model_includes]
+        include = []
+        for r_include in req_includes:
+            snake_include_name = Mapper.camelcase_to_underscore(r_include.strip())
+            if snake_include_name not in model_includes:
+                return self.create_response(error_message=ErrorMessages.INVALID_INCLUDE_PARAM.format(snake_include_name))
+            include.append(snake_include_name)
 
         # handle fields
         # if they explicitly ask for the field do we need to make them pass includes as well? currently yes
