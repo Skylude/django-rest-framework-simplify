@@ -269,7 +269,7 @@ class SimplifyView(APIView):
                         elif isolate_filter:
                             isolated_filter_kwargs[filter_name] = filter_value
                         elif filterable_property:
-                            filterable_property_query = filterable_properties[filter_name]['query']
+                            filterable_property_query = model_filterable_properties[filter_name]['query']
                             # todo: i don't like this but don't have the time to make this better
                             # todo: if we are annotating we should automatically account for the __in
                             filterable_properties[filter_name.rstrip('__in')] = filterable_property_query
