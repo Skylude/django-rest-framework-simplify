@@ -261,11 +261,12 @@ class SimplifyView(APIView):
 
                 # if filter is in model filters then add it to the kwargs
                 if filter_name not in model_filters.keys() and filter_name not in model_filterable_properties.keys():
-                    logger.error(ErrorMessages.INVALID_FILTER_PARAM.format(filter_name))
+                    msg = ErrorMessages.INVALID_FILTER_PARAM.format(filter_name)
+                    logger.error(msg)
                     raise_invalid_filters = getattr(settings, 'REST_FRAMEWORK_SIMPLIFY_RAISE_INVALID_FILTERS', False)
                     if raise_invalid_filters:
                         return self.create_response(
-                            error_message=ErrorMessages.INVALID_FILTER_PARAM.format(filter_name)
+                            error_message=msg,
                         )
                 if filter_name in model_filters.keys():
                     if model_filters[filter_name]['list']:
