@@ -22,4 +22,4 @@ class ErrorMessages:
     PARSEABLE_RELATED_FIELD_PARSE_FAILED = 'Could not parse related field exception was: {0}'
     TOO_DEEP = 'You shall not pass -- attempting to parse too many levels and Gandalf will not allow it'
     COULD_NOT_PARSE_DATE_FIELD = 'Date field could not be parsed for field: {0}'
-
+    INVALID_FILTER_PARAM = 'Invalid filter queryparam: {0}'
