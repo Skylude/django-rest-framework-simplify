@@ -226,7 +226,7 @@ class BasicClassTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
 
-    def test_get_list_sub(self):
+    def test_get_sub(self):
         # arrange
         child_one = DataGenerator.set_up_child_class()
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
@@ -239,7 +239,7 @@ class BasicClassTests(unittest.TestCase):
         basic_class.refresh_from_db()
         self.assertEqual(child_one.id, result.data['id'])
 
-    def test_get_list_sub_with_no_child_resource(self):
+    def test_get_sub_with_no_child_resource(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(child_one=None)
         url = '/basicClass/{0}/childOne'.format(basic_class.id)
@@ -249,6 +249,18 @@ class BasicClassTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.data, {})
+
+    def test_get_list_sub(self):
+        # arrange
+        b = DataGenerator.set_up_basic_class()
+        DataGenerator.set_up_model_with_parent_resource(basic_class=b)
+        url = f'/basicClasses/{b.id}/modelWithParentResources'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_post_sub_resource_to_child_(self):
         # arrange

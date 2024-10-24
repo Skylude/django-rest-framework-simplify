@@ -145,4 +145,8 @@ class ModelWithParentResourceHandler(SimplifyView):
             'lives_on_parent': False
         }
         linked_objects.append(model_with_parent_resource)
-        super().__init__(ModelWithParentResource, supported_methods=['GET_SUB'], linked_objects=linked_objects)
+        super().__init__(
+            ModelWithParentResource,
+            supported_methods=['GET_SUB', 'GET_LIST_SUB'],
+            linked_objects=linked_objects
+        )
