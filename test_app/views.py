@@ -5,9 +5,16 @@ from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyV
 from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass, RequestFieldSaveClass, \
     PhaseGroup, ModelWithParentResource
 from test_app import forms, email_templates
+from rest_framework.permissions import BasePermission
+
+
+class BasicPermission(BasePermission):
+    pass
 
 
 class BasicClassHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         super().__init__(BasicClass, supported_methods=['GET', 'GET_LIST', 'POST_SUB', 'POST', 'DELETE'])
 
@@ -42,6 +49,8 @@ class LinkingClassWithNoLinkingClsDefinedHandler(SimplifyView):
 
 
 class LinkingClassHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         linked_objects = []
         linking_class = {

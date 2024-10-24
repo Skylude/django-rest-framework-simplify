@@ -50,6 +50,7 @@ class SimplifyView(APIView):
             obj = self.model.objects.using(self.read_db).get(pk=pk)
         except self.DoesNotExist:
             raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+        self.check_object_permissions(request, obj)
 
         # check query param to only delete linker
         delete_link_only = request.query_params.get('deleteLinkOnly', False)
@@ -570,8 +571,9 @@ class SimplifyView(APIView):
                             exceptions.AuthenticationFailed)):
             status_code = status.HTTP_403_FORBIDDEN
 
-        # grab error_message from exception
-        error_message = exc.args[0]
+        # TODO could likely extend the APIException baseclass though out the simplify views in order
+        # for errors to be more like rest frameworks.
+        error_message = exc.args[0] if exc.args else exceptions.APIException.default_detail
 
         if hasattr(self.request.query_params, 'dict'):
             query_params = self.request.query_params.dict()

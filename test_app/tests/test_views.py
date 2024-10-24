@@ -1,6 +1,7 @@
 import django
 import os
 import unittest.mock
+from unittest.mock import patch, Mock
 import uuid
 
 
@@ -19,6 +20,34 @@ from rest_framework.test import APIClient
 
 from test_app.tests.helpers import DataGenerator
 from test_app.models import BasicClass, ChildClass, LinkingClass, Application
+
+
+@patch('test_app.views.BasicPermission.has_object_permission', Mock(return_value=False))
+class ObjectPermissionTests(unittest.TestCase):
+    api_client = APIClient()
+
+    def test_delete_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.delete(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_sub_denies(self):
+        # arrange
+        c = DataGenerator.set_up_child_class()
+        b = DataGenerator.set_up_basic_class(child_one=c)
+        url = f'/basicClass/{b.id}/childClass/{c.id}'
+
+        # act
+        res = self.api_client.delete(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class BasicClassTests(unittest.TestCase):
