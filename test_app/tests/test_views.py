@@ -52,7 +52,7 @@ class ObjectPermissionTests(unittest.TestCase):
         BasicClass.objects.get(id=b.id)
         ChildClass.objects.get(id=c.id)
 
-    def test_put_denies_permission(self):
+    def test_put_denies(self):
         # arrange
         bc = DataGenerator.set_up_basic_class(name='before')
         url = f'/basicClass/{bc.id}'
@@ -67,6 +67,33 @@ class ObjectPermissionTests(unittest.TestCase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         bc.refresh_from_db()
         self.assertEqual(bc.name, 'before')
+
+    def test_get_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(res.data), 1)
+        self.assertIsNotNone(res.data['errorMessage'])
+
+    def test_get_sub_pk_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        c = DataGenerator.set_up_model_with_parent_resource(basic_class=bc)
+        url = f'/basicClasses/{bc.id}/modelWithParentResources/{c.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(res.data), 1)
+        self.assertIsNotNone(res.data['errorMessage'])
 
 
 class BasicClassTests(unittest.TestCase):

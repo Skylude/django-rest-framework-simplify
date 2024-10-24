@@ -5,11 +5,7 @@ from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyV
 from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass, RequestFieldSaveClass, \
     PhaseGroup, ModelWithParentResource
 from test_app import forms, email_templates
-from rest_framework.permissions import BasePermission
-
-
-class BasicPermission(BasePermission):
-    pass
+from test_app.permissions import BasicPermission
 
 
 class BasicClassHandler(SimplifyView):
@@ -134,6 +130,8 @@ class PhaseGroupHandler(SimplifyView):
 
 
 class ModelWithParentResourceHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         linked_objects = []
         model_with_parent_resource = {

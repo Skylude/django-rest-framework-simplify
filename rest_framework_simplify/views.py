@@ -112,6 +112,7 @@ class SimplifyView(APIView):
                 obj = self.model.objects.using(self.read_db).filter(pk=pk)
                 is_single_result = True
                 empty_is_error = True
+            self.check_object_permissions(request, obj)
 
         else:
             # we could be a sub resource so we need to check if a parent_resource was passed in
@@ -479,7 +480,6 @@ class SimplifyView(APIView):
 
             return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
                                                 count=total_items, using_cache=False, cache_key=cache_key)
-
 
     def get_field_nested(self, field_long_name):
         tree = field_long_name.split('__')
