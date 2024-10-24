@@ -16,7 +16,10 @@ class BasicClassHandler(SimplifyView):
     permission_classes = [BasicPermission]
 
     def __init__(self):
-        super().__init__(BasicClass, supported_methods=['GET', 'GET_LIST', 'POST_SUB', 'POST', 'DELETE'])
+        super().__init__(
+            BasicClass,
+            supported_methods=['GET', 'GET_LIST', 'PUT', 'POST_SUB', 'POST', 'DELETE']
+        )
 
 
 class ChildClassHandler(SimplifyView):

@@ -684,7 +684,7 @@ class SimplifyView(APIView):
         if 'PUT' not in self.supported_methods:
             return self.create_response(error_message=ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
         obj = self.model.parse(request.data, existing_id=pk, request=request)
-
+        self.check_object_permissions(request, obj)
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
 

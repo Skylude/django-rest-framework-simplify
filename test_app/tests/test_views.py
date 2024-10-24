@@ -36,6 +36,7 @@ class ObjectPermissionTests(unittest.TestCase):
 
         # assert
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        BasicClass.objects.get(id=bc.id)
 
     def test_delete_sub_denies(self):
         # arrange
@@ -48,6 +49,24 @@ class ObjectPermissionTests(unittest.TestCase):
 
         # assert
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        BasicClass.objects.get(id=b.id)
+        ChildClass.objects.get(id=c.id)
+
+    def test_put_denies_permission(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(name='before')
+        url = f'/basicClass/{bc.id}'
+        body = {
+            'name': 'after'
+        }
+
+        # act
+        res = self.api_client.put(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        bc.refresh_from_db()
+        self.assertEqual(bc.name, 'before')
 
 
 class BasicClassTests(unittest.TestCase):
