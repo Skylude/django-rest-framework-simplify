@@ -30,6 +30,10 @@ class BasicClass(SimplifyModel):
     @staticmethod
     def get_filters():
         return {
+            'id': {
+                'type': int,
+                'list': False
+            },
             'active': {
                 'type': bool,
                 'list': False
@@ -67,6 +71,7 @@ class ChildClass(SimplifyModel):
 
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=15)
+    active = models.BooleanField(null=False, default=True)
 
 
 class NestedChild(SimplifyModel):
@@ -197,3 +202,4 @@ class ModelWithParentResource(SimplifyModel):
     id = models.AutoField(primary_key=True)
     text_field = models.CharField(max_length=32, null=True, blank=True)
     basic_class = models.ForeignKey('BasicClass', null=False, blank=False, on_delete=models.CASCADE)
+    active = models.BooleanField(null=False, default=True)

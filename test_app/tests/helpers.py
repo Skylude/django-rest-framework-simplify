@@ -26,11 +26,11 @@ class DataGenerator:
         return basic_class
 
     @staticmethod
-    def set_up_child_class(name=None, write_db='default'):
+    def set_up_child_class(name=None, active=True, write_db='default'):
         if not name:
             name = str(uuid.uuid4())[:15]
 
-        child_class = ChildClass(name=name)
+        child_class = ChildClass(name=name, active=active)
         child_class.save(using=write_db)
         return child_class
 
@@ -130,8 +130,8 @@ class DataGenerator:
         return application
 
     @staticmethod
-    def set_up_model_with_parent_resource(basic_class=None):
-        model_with_parent_resource = ModelWithParentResource()
+    def set_up_model_with_parent_resource(basic_class=None, active=True):
+        model_with_parent_resource = ModelWithParentResource(active=active)
         if not basic_class:
             basic_class = DataGenerator.set_up_basic_class()
         model_with_parent_resource.basic_class = basic_class

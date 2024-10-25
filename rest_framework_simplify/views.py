@@ -37,6 +37,14 @@ class SimplifyView(APIView):
     def get_db_engine(self):
         return 'sql'
 
+    def get_queryset(self):
+        """
+        get_queryset returns the base manager for the SimplifyView's model. This method can be
+        overridden to modify the base manager on the server according to the request. This is
+        generally a good idea when the queryset should be limited by the user's permissions.
+        """
+        return self.model.objects
+
     def delete(self, request, pk=None, parent_resource=None, parent_pk=None):
         if parent_pk and parent_resource and self.linked_objects:
             if 'DELETE_SUB' not in self.supported_methods:
@@ -47,7 +55,7 @@ class SimplifyView(APIView):
                 return self.create_response(error_message=ErrorMessages.DELETE_NOT_SUPPORTED.format(self.model.__name__))
 
         try:
-            obj = self.model.objects.using(self.read_db).get(pk=pk)
+            obj = self.get_queryset().using(self.read_db).get(pk=pk)
         except self.DoesNotExist:
             raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
         self.check_object_permissions(request, obj)
@@ -109,7 +117,7 @@ class SimplifyView(APIView):
                 empty_is_error = True
             # try to get the obj from db with no parent resource
             else:
-                obj = self.model.objects.using(self.read_db).filter(pk=pk)
+                obj = self.get_queryset().using(self.read_db).filter(pk=pk)
                 is_single_result = True
                 empty_is_error = True
             self.check_object_permissions(request, obj)
@@ -129,7 +137,7 @@ class SimplifyView(APIView):
                     linked_object = lives_on_parent_results[0]
                     child_id_field_name = linked_object['sub_resource_name']+'_id'
                     child_id = linked_object['parent_cls'].objects.using(self.read_db).values(child_id_field_name).get(pk=parent_pk)[child_id_field_name]
-                    obj = self.model.objects.using(self.read_db).filter(pk=child_id)
+                    obj = self.get_queryset().using(self.read_db).filter(pk=child_id)
                     is_single_result = True
                     # there is no empty_is_error here to preserve legacy behavior of empty object in this specific case
                 else:
@@ -146,7 +154,7 @@ class SimplifyView(APIView):
                 # trying to get ALL items in DB
                 if 'GET_LIST' not in self.supported_methods:
                     return self.create_response(error_message=ErrorMessages.GET_LIST_NOT_SUPPORTED.format(self.model.__name__))
-                obj = self.model.objects.using(self.read_db).all()
+                obj = self.get_queryset().using(self.read_db).all()
 
         # handle includes
         req_includes = request.query_params.get('include', [])
@@ -543,7 +551,7 @@ class SimplifyView(APIView):
                     if pk:
                             kwargs[linked_object['sub_resource_name']] = pk
                             if linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs).exists():
-                                return self.model.objects.using(read_db).filter(pk=pk)
+                                return self.get_queryset().using(self.read_db).filter(pk=pk)
                             else:
                                 raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
@@ -554,16 +562,16 @@ class SimplifyView(APIView):
                         # go through linking table items and get the sub resources from each entry into a list
                         linked_obj_ids = linked_objs.values_list(linked_object['sub_resource_name'] + '__id', flat=True)
 
-                        return self.model.objects.using(self.read_db).filter(pk__in=linked_obj_ids)
+                        return self.get_queryset().using(self.read_db).filter(pk__in=linked_obj_ids)
                 # no linking table and the link is on this obj itself
                 else:
                     # if we have a pk we only want the exact resource we are looking for
                     if pk:
                         kwargs['pk'] = pk
-                        return self.model.objects.using(self.read_db).filter(**kwargs)
+                        return self.get_queryset().using(self.read_db).filter(**kwargs)
                     # no pk was passed in meaning we are getting the entire list of items that match the parent resource
                     else:
-                        return self.model.objects.using(self.read_db).filter(**kwargs)
+                        return self.get_queryset().using(self.read_db).filter(**kwargs)
 
     def handle_exception(self, exc):
         # TODO default status code could potentially be 500 (the Rest Framework default), however

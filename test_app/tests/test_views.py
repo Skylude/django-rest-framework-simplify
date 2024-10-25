@@ -20,7 +20,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
 from test_app.tests.helpers import DataGenerator
-from test_app.models import BasicClass, ChildClass, LinkingClass, Application
+from test_app.models import BasicClass, ChildClass, LinkingClass, Application, ModelWithParentResource
 
 
 @patch('test_app.views.BasicPermission.has_object_permission', Mock(return_value=False))
@@ -172,6 +172,102 @@ class PerformCreateTests(unittest.TestCase):
         self.assertEqual(res.status_code, ValidationError.status_code)
         self.assertIsNotNone(res.data.get('errorMessage'))
         self.assertFalse(LinkingClass.objects.filter(basic_class_id=bc.id).exists())
+
+
+class GetQuerysetTests(unittest.TestCase):
+    api_client = APIClient()
+
+    @patch(
+        'test_app.views.BasicClassHandler.get_queryset',
+        Mock(return_value=BasicClass.objects.filter(active=True))
+    )
+    def test_get_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(active=False)
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.data['errorMessage'],
+            ErrorMessages.DOES_NOT_EXIST.format(BasicClass.__name__, bc.id)
+        )
+
+    @patch(
+        'test_app.views.ModelWithParentResourceHandler.get_queryset',
+        Mock(return_value=ModelWithParentResource.objects.filter(active=True))
+    )
+    def test_get_sub_pk_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        c = DataGenerator.set_up_model_with_parent_resource(basic_class=bc, active=False)
+        url = f'/basicClasses/{bc.id}/modelWithParentResources/{c.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.data['errorMessage'],
+            ErrorMessages.DOES_NOT_EXIST.format(ModelWithParentResource.__name__, c.id)
+        )
+
+    @patch(
+        'test_app.views.ChildClassHandler.get_queryset',
+        Mock(return_value=ChildClass.objects.filter(active=True))
+    )
+    def test_get_sub_override_querysest(self):
+        # arrange
+        c = DataGenerator.set_up_child_class(active=False)
+        bc = DataGenerator.set_up_basic_class(child_one=c)
+        url = f'/basicClass/{bc.id}/childOne'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        # Note the GET_SUB path expects an empty object instead of a DoesNotExist type error here
+        # for legacy reasons.
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+
+    @patch(
+        'test_app.views.ModelWithParentResourceHandler.get_queryset',
+        Mock(return_value=ModelWithParentResource.objects.filter(active=True))
+    )
+    def test_get_list_sub_override_querysest(self):
+        # arrange
+        b = DataGenerator.set_up_basic_class()
+        DataGenerator.set_up_model_with_parent_resource(basic_class=b, active=False)
+        url = f'/basicClasses/{b.id}/modelWithParentResources'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+
+    @patch(
+        'test_app.views.BasicClassHandler.get_queryset',
+        Mock(return_value=BasicClass.objects.filter(active=True))
+    )
+    def test_get_list_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(active=False)
+        url = f'/basicClass?filters=id={bc.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+        self.assertNotIn(bc.id, [d['id'] for d in res.data])
 
 
 class BasicClassTests(unittest.TestCase):
@@ -596,7 +692,6 @@ class BasicClassTests(unittest.TestCase):
         # assert
         self.assertEqual(status.HTTP_200_OK, result.status_code)
         self.assertEqual(len(result.data), 1)
-
 
 
 class ReadReplicaTests(unittest.TestCase):
