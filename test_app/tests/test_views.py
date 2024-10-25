@@ -174,6 +174,45 @@ class PerformCreateTests(unittest.TestCase):
         self.assertFalse(LinkingClass.objects.filter(basic_class_id=bc.id).exists())
 
 
+class PerformUpdateTests(unittest.TestCase):
+    api_client = APIClient()
+
+    @patch('test_app.views.BasicClassHandler.perform_update')
+    def test_put_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = PermissionDenied()
+        bc = DataGenerator.set_up_basic_class(name='gud name')
+        url = f'/basicClass/{bc.id}'
+        name = DataGenerator.str(15)
+        body = {
+            'name': name
+        }
+
+        # act
+        res = self.api_client.put(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(BasicClass.objects.get(id=bc.id).name, 'gud name')
+
+    def test_put_transforms(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(name='gud name')
+        url = f'/basicClass/{bc.id}'
+        body = {}
+        transformed_name = 'gudder name'
+        def perform_update_mock(self, request_data):
+            request_data['name'] = transformed_name
+
+        # act
+        with patch('test_app.views.BasicClassHandler.perform_update', new=perform_update_mock):
+            res = self.api_client.put(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(BasicClass.objects.get(id=bc.id).name, transformed_name)
+
+
 class GetQuerysetTests(unittest.TestCase):
     api_client = APIClient()
 

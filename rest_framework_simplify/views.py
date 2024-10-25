@@ -716,10 +716,23 @@ class SimplifyView(APIView):
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:
             return self.create_response(error_message=ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
+        self.perform_update(request.data)
         obj = self.model.parse(request.data, existing_id=pk, request=request)
         self.check_object_permissions(request, obj)
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
+
+    # perform_update does not exactly match the definition of Rest Framework's perform update due to
+    # serializers being used in Rest Framework, but not Simplify. We attempt to keep the interface
+    # as close as possible in case support for Serializers is added.
+    def perform_update(self, request_body):
+        """
+        Similar to Rest Framework's `perform_update`, this method can be overridden to set defaults
+        based off the request and/or perform validation. For example, setting the request user id
+        on the request body or denying the user access to modify the object. This differs from Rest
+        Framework's perform update in that Simplify views do not support serializers.
+        """
+        pass
 
     def create_response(self, body=None, response_status=None, error_message=None, content_type='application/json', serialize=False, exclude=[], include=[], fields=[], count=None, using_cache=False, cache_key=None, optimized_serialize=False):
         if using_cache:
