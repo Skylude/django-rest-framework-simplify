@@ -566,14 +566,25 @@ class SimplifyView(APIView):
                         return self.model.objects.using(self.read_db).filter(**kwargs)
 
     def handle_exception(self, exc):
+        # TODO default status code could potentially be 500 (the Rest Framework default), however
+        # this would be a breaking change.
         status_code = status.HTTP_400_BAD_REQUEST
-        if isinstance(exc, (exceptions.NotAuthenticated,
-                            exceptions.AuthenticationFailed)):
-            status_code = status.HTTP_403_FORBIDDEN
+        error_message = exceptions.APIException.default_detail
 
         # TODO could likely extend the APIException baseclass though out the simplify views in order
-        # for errors to be more like rest frameworks.
-        error_message = exc.args[0] if exc.args else exceptions.APIException.default_detail
+        # for errors to be more like rest frameworks. Benefits in a little better readability in
+        # this codebase and the ability to specify a status code.
+        if isinstance(exc, exceptions.APIException):
+            error_message = str(exc.detail)
+            status_code = exc.status_code
+        elif exc.args and exc.args[0]:
+            error_message = exc.args[0]
+
+        if isinstance(exc, (exceptions.NotAuthenticated,
+                            exceptions.AuthenticationFailed)):
+            # This coercion is baked into Rest Framework, and has likely evolved because it contains
+            # some logic about headers.
+            status_code = status.HTTP_403_FORBIDDEN
 
         if hasattr(self.request.query_params, 'dict'):
             query_params = self.request.query_params.dict()
@@ -649,6 +660,8 @@ class SimplifyView(APIView):
                 return self.create_response(error_message=ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
                                             format(self.model.__name__))
 
+        self.perform_create(request.data)
+
         # occasionally we may need to transform the request to fit the model -- this is generally an unrestful call
         if hasattr(self.model, 'transform_request'):
             transformed_request = self.model.transform_request(request)
@@ -679,6 +692,18 @@ class SimplifyView(APIView):
                 link_model(**{back_reference_field_name: obj.id, Mapper.camelcase_to_underscore(link_id_field_name): link_id}).save()
 
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
+
+    # perform_create does not exactly match the definition of Rest Framework's perform create due to
+    # serializers being used in Rest Framework, but not Simplify. We attempt to keep the interface
+    # as close as possible in case support for Serializers is added.
+    def perform_create(self, request_body):
+        """
+        Similar to Rest Framework's `perform_create`, this method can be overridden to set defaults
+        based off the request and/or perform validation. For example, setting the request user id
+        on the request body or denying the user access to create the object. This differs from Rest
+        Framework's perform create in that Simplify views do not support serializers.
+        """
+        pass
 
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:

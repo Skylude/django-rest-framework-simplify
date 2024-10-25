@@ -16,6 +16,7 @@ from rest_framework_simplify.helpers import generate_str
 from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyEmailTemplateView
 from rest_framework import status
 from rest_framework.test import APIClient
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
 from test_app.tests.helpers import DataGenerator
@@ -23,7 +24,7 @@ from test_app.models import BasicClass, ChildClass, LinkingClass, Application
 
 
 @patch('test_app.views.BasicPermission.has_object_permission', Mock(return_value=False))
-class ObjectPermissionTests(unittest.TestCase):
+class HasObjectPermissionTests(unittest.TestCase):
     api_client = APIClient()
 
     def test_delete_denies(self):
@@ -94,6 +95,83 @@ class ObjectPermissionTests(unittest.TestCase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(len(res.data), 1)
         self.assertIsNotNone(res.data['errorMessage'])
+
+
+class PerformCreateTests(unittest.TestCase):
+    api_client = APIClient()
+
+    @patch('test_app.views.BasicClassHandler.perform_create')
+    def test_post_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = PermissionDenied()
+        url = '/basicClass'
+        name = DataGenerator.str(15)
+        body = {
+            'name': name
+        }
+
+        # act
+        res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(BasicClass.objects.filter(name=name).exists())
+
+    def test_post_transforms(self):
+        # arrange
+        url = '/basicClass'
+        body = {
+            'name': 'gud name'
+        }
+        transformed_name = 'gudder name'
+        def perform_create_mock(self, request_data):
+            request_data['name'] = transformed_name
+
+        # act
+        with patch('test_app.views.BasicClassHandler.perform_create', new=perform_create_mock):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['name'], transformed_name)
+        self.assertTrue(BasicClass.objects.filter(name=transformed_name).exists())
+
+    @patch('test_app.views.ChildClassHandler.perform_create')
+    def test_post_sub_lives_on_parent_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = PermissionDenied('gud error')
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClasses/{bc.id}/childOne'
+        body = {
+            'name': 'gud name'
+        }
+
+        # act
+        res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.data['errorMessage'], 'gud error')
+        bc.refresh_from_db()
+        self.assertIsNone(bc.child_one)
+
+    @patch('test_app.views.LinkingClassHandler.perform_create')
+    def test_post_sub_link_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = ValidationError()
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClasses/{bc.id}/childClass'
+        body = {
+            'name': 'gud name'
+        }
+
+        # act
+        res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, ValidationError.status_code)
+        self.assertIsNotNone(res.data.get('errorMessage'))
+        self.assertFalse(LinkingClass.objects.filter(basic_class_id=bc.id).exists())
 
 
 class BasicClassTests(unittest.TestCase):

@@ -19,6 +19,8 @@ class BasicClassHandler(SimplifyView):
 
 
 class ChildClassHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         linked_objects = []
         child_one = {

@@ -7,6 +7,10 @@ from test_app.models import *
 
 class DataGenerator:
     @staticmethod
+    def str(length=16):
+        return str(uuid.uuid4())[:length]
+
+    @staticmethod
     def set_up_basic_class(name=None, child_one=None, child_two=None, active=True, write_db='default',
                            child_three_count=2, model_with_sensitive_data=None):
         if not name:
