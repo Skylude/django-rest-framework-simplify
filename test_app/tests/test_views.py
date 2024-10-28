@@ -815,6 +815,46 @@ class StoredProcedureTests(unittest.TestCase):
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(result.data[0]['amount'], 612)
 
+    def test_clean_denies(self):
+        # arrange
+        url = '/sqlStoredProcedures'
+        body = {
+            'spName': 'TestSQLServerStoredProc',
+            'testId': 1234
+        }
+        def clean_mock(self):
+            raise ValidationError('invalid user')
+
+        # act
+        with patch('test_app.forms.TestSQLServerStoredProcForm.clean', new=clean_mock):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data['errorMessage'], 'invalid user')
+
+    def test_clean_transforms(self):
+        # arrange
+        did_set_up = DataGenerator.set_up_sp_postgres_format()
+        if not did_set_up:
+            self.skipTest('requires postgres connection')
+        url = '/postgresStoredProcedures'
+        body = {
+            'spName': 'postgres_format',
+            'var_int': 1
+        }
+        def clean_mock(self):
+            self.cleaned_data['var_int'] = 2
+            return self.cleaned_data
+
+        # act
+        with patch('test_app.forms.PostgresFormatForm.clean', new=clean_mock):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data[0]['amount'], Decimal(2))
+
     def test_post_invalid_sp_returns_invalid_sp_error(self):
         # arrange
         url = '/sqlStoredProcedures'

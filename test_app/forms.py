@@ -31,7 +31,7 @@ class PostgresFormatForm(StoredProcedureForm):
         # add items to kwargs
         kwargs['connection_data'] = {
             'server': 'localhost',
-            'database': 'test',
+            'database': 'drfsimp',
             'username': 'test',
             'password': 'test1234',
             'port': 5432,

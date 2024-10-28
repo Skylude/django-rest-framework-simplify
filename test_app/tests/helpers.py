@@ -1,6 +1,8 @@
 import uuid
 
 from random import randint
+from django.conf import settings
+from django.db import connection
 
 from test_app.models import *
 
@@ -9,6 +11,28 @@ class DataGenerator:
     @staticmethod
     def str(length=16):
         return str(uuid.uuid4())[:length]
+
+    @staticmethod
+    def set_up_sp_postgres_format():
+        if settings.DATABASES['default']['ENGINE'] != 'django.db.backends.postgresql':
+            return False
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE OR REPLACE FUNCTION postgres_format (
+                    var_int int,
+                    var_str varchar
+                )
+                RETURNS TABLE (
+                    amount DECIMAL
+                ) AS $result$
+                BEGIN
+                RETURN QUERY SELECT var_int::DECIMAL AS "amount";
+                END; $result$
+                LANGUAGE 'plpgsql';
+                """
+            )
+        return True
 
     @staticmethod
     def set_up_basic_class(name=None, child_one=None, child_two=None, active=True, write_db='default',

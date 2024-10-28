@@ -358,3 +358,27 @@ class FooHandler(SimplifyView):
             raise ValidationError()
         request_body['updated_by_id'] = request.user.id
 ```
+
+### Stored procedure forms
+
+Stored procedure forms can perform validation and/or transformation by overriding the `clean` method
+inherited from the Django `BaseForm` class. The `request` object is provided to the `clean` method
+so the `user` may be accessed during cleaning.
+
+Example:
+```python
+class PostgresForm(StoredProcedureForm):
+    var_int = forms.IntegerField(required=True)
+
+    def __init__(self, *args, **kwargs):
+        kwargs['connection_data'] = {
+          # ...
+        }
+        super(PostgresFormatForm, self).__init__(*args, **kwargs)
+
+    def clean(self):
+        if not self.request.user.is_super:
+            return PermissionDenied()
+        self.cleaned_data['var_int'] += 1
+        return self.super().clean()
+```

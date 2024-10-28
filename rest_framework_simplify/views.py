@@ -843,7 +843,7 @@ class SimplifyStoredProcedureView(APIView):
             return Response({'errorMessage': self.ErrorMessages.INVALID_STORED_PROCEDURE.format(sp_name)},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        form = form_cls(request.data)
+        form = form_cls(request.data, request=request)
 
         # validate the model that was sent in
         if form.is_valid():
