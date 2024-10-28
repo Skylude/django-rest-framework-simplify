@@ -574,25 +574,15 @@ class SimplifyView(APIView):
                         return self.get_queryset().using(self.read_db).filter(**kwargs)
 
     def handle_exception(self, exc):
-        # TODO default status code could potentially be 500 (the Rest Framework default), however
-        # this would be a breaking change.
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = exceptions.APIException.default_detail
 
-        # TODO could likely extend the APIException baseclass though out the simplify views in order
-        # for errors to be more like rest frameworks. Benefits in a little better readability in
-        # this codebase and the ability to specify a status code.
-        if isinstance(exc, exceptions.APIException):
-            error_message = str(exc.detail)
-            status_code = exc.status_code
-        elif exc.args and exc.args[0]:
-            error_message = exc.args[0]
-
         if isinstance(exc, (exceptions.NotAuthenticated,
                             exceptions.AuthenticationFailed)):
-            # This coercion is baked into Rest Framework, and has likely evolved because it contains
-            # some logic about headers.
             status_code = status.HTTP_403_FORBIDDEN
+
+        if exc.args:
+            error_message = exc.args[0]
 
         if hasattr(self.request.query_params, 'dict'):
             query_params = self.request.query_params.dict()
@@ -701,9 +691,6 @@ class SimplifyView(APIView):
 
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
 
-    # perform_create does not exactly match the definition of Rest Framework's perform create due to
-    # serializers being used in Rest Framework, but not Simplify. We attempt to keep the interface
-    # as close as possible in case support for Serializers is added.
     def perform_create(self, request_body):
         """
         Similar to Rest Framework's `perform_create`, this method can be overridden to set defaults
@@ -722,9 +709,6 @@ class SimplifyView(APIView):
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
 
-    # perform_update does not exactly match the definition of Rest Framework's perform update due to
-    # serializers being used in Rest Framework, but not Simplify. We attempt to keep the interface
-    # as close as possible in case support for Serializers is added.
     def perform_update(self, request_body):
         """
         Similar to Rest Framework's `perform_update`, this method can be overridden to set defaults

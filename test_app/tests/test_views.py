@@ -114,7 +114,7 @@ class PerformCreateTests(unittest.TestCase):
         res = self.api_client.post(url, body, format='json')
 
         # assert
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(BasicClass.objects.filter(name=name).exists())
 
     def test_post_transforms(self):
@@ -150,7 +150,7 @@ class PerformCreateTests(unittest.TestCase):
         res = self.api_client.post(url, body, format='json')
 
         # assert
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res.data['errorMessage'], 'gud error')
         bc.refresh_from_db()
         self.assertIsNone(bc.child_one)
@@ -192,7 +192,7 @@ class PerformUpdateTests(unittest.TestCase):
         res = self.api_client.put(url, body, format='json')
 
         # assert
-        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(BasicClass.objects.get(id=bc.id).name, 'gud name')
 
     def test_put_transforms(self):
