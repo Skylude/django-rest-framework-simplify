@@ -479,6 +479,19 @@ class BasicClassTests(unittest.TestCase):
         basic_class.refresh_from_db()
         self.assertEqual(child_one.id, result.data['id'])
 
+    def test_get_sub_pk_linking_cls(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        c = DataGenerator.set_up_child_class()
+        DataGenerator.set_up_linking_class(basic_class=bc, child_class=c)
+        url = f'/basicClasses/{bc.id}/childClass/{c.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
     def test_get_sub_with_no_child_resource(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(child_one=None)

@@ -62,7 +62,7 @@ class LinkingClassHandler(SimplifyView):
             'sub_resource_name': 'child_class'
         }
         linked_objects.append(linking_class)
-        super().__init__(ChildClass, supported_methods=['GET', 'POST_SUB', 'DELETE', 'DELETE_SUB'], linked_objects=linked_objects)
+        super().__init__(ChildClass, supported_methods=['GET', 'GET_SUB', 'POST_SUB', 'DELETE', 'DELETE_SUB'], linked_objects=linked_objects)
 
 
 class MetaDataClassHandler(SimplifyView):
