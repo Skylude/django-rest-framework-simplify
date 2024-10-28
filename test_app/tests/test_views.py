@@ -1026,6 +1026,49 @@ class EmailTemplateTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
 
+    def test_send_email_clean_denies(self):
+        # arrange
+        url = '/sendEmail'
+        body = {
+            'templateName': 'DynamicEmail',
+            'to': 'you@example.com',
+            'firstName': 'Chris',
+            'teamName': 'Our Team',
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+        }
+        def mock_clean(self):
+            raise ValidationError('unable to validate')
+
+        # act
+        with patch('test_app.email_templates.DynamicEmailTemplate.clean', new=mock_clean):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data['errorMessage'], 'unable to validate')
+
+    def test_send_email_clean_transforms(self):
+        # arrange
+        url = '/sendEmail'
+        body = {
+            'templateName': 'DynamicEmail',
+            'to': 'you@example.com',
+            'firstName': 'Chris',
+            'teamName': 'Our Team',
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+        }
+        def mock_clean(self):
+            self.cleaned_data['to'] = 'wrong' if self.request.user.is_superuser else 'transformed@example.com'
+            return self.cleaned_data
+
+        # act
+        with patch('test_app.email_templates.DynamicEmailTemplate.clean', new=mock_clean):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['to'], 'transformed@example.com')
+
 
 class OneToOneTests(unittest.TestCase):
 

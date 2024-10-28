@@ -382,3 +382,27 @@ class PostgresForm(StoredProcedureForm):
         self.cleaned_data['var_int'] += 1
         return self.super().clean()
 ```
+
+### Email forms
+
+Email forms can perform validation and/or transformation by overriding the `clean` method inherited
+from the Django `BaseForm` class. The `request` object is provided to the `clean` method so the
+`user` may be accessed during cleaning.
+
+Example:
+```python
+class FooEmailTemplate(EmailTemplateForm):
+    to = forms.CharField(required=True)
+
+    def __init__(self, *args, **kwargs):
+        kwargs['default_data'] = {
+          # ...
+        }
+        super(DynamicEmailTemplate, self).__init__(*args, **kwargs)
+
+    def clean(self):
+        if not self.request.user.is_super:
+            raise ValidationError('you gotta be super')
+        self.cleaned_data['from'] = self.request.user.email
+        return self.super().clean()
+```

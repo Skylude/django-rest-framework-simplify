@@ -914,7 +914,7 @@ class SimplifyEmailTemplateView(APIView):
             return Response({'errorMessage': self.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(template_name)},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        form = form_cls(request.data)
+        form = form_cls(request.data, request=request)
         res = form.send_email()
 
         # may need some type of serialization

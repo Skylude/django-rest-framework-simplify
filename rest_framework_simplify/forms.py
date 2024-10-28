@@ -102,6 +102,7 @@ class EmailTemplateForm(forms.Form):
     def __init__(self, *args, **kwargs):
         # call base constructor
         default_data = kwargs.pop('default_data', None)
+        self.request = kwargs.pop('request', None)
         super(EmailTemplateForm, self).__init__(*args, **kwargs)
         # setup template
         self.default_data = {
