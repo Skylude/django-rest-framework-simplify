@@ -10,6 +10,7 @@ django.setup()
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 from decimal import Decimal
 from rest_framework_simplify.errors import ErrorMessages
 from rest_framework_simplify.helpers import generate_str
@@ -833,11 +834,13 @@ class StoredProcedureTests(unittest.TestCase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res.data['errorMessage'], 'invalid user')
 
+    @unittest.skipUnless(
+        settings.DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql',
+        'requires postgres connection'
+    )
     def test_clean_transforms(self):
         # arrange
-        did_set_up = DataGenerator.set_up_sp_postgres_format()
-        if not did_set_up:
-            self.skipTest('requires postgres connection')
+        DataGenerator.set_up_sp_postgres_format()
         url = '/postgresStoredProcedures'
         body = {
             'spName': 'postgres_format',
