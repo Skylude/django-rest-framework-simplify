@@ -5,14 +5,22 @@ from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyV
 from test_app.models import BasicClass, ChildClass, LinkingClass, MetaDataClass, OneToOneClass, RequestFieldSaveClass, \
     PhaseGroup, ModelWithParentResource
 from test_app import forms, email_templates
+from test_app.permissions import BasicPermission
 
 
 class BasicClassHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
-        super().__init__(BasicClass, supported_methods=['GET', 'GET_LIST', 'POST_SUB', 'POST', 'DELETE'])
+        super().__init__(
+            BasicClass,
+            supported_methods=['GET', 'GET_LIST', 'PUT', 'POST_SUB', 'POST', 'DELETE']
+        )
 
 
 class ChildClassHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         linked_objects = []
         child_one = {
@@ -42,6 +50,8 @@ class LinkingClassWithNoLinkingClsDefinedHandler(SimplifyView):
 
 
 class LinkingClassHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         linked_objects = []
         linking_class = {
@@ -52,7 +62,7 @@ class LinkingClassHandler(SimplifyView):
             'sub_resource_name': 'child_class'
         }
         linked_objects.append(linking_class)
-        super().__init__(ChildClass, supported_methods=['GET', 'POST_SUB', 'DELETE', 'DELETE_SUB'], linked_objects=linked_objects)
+        super().__init__(ChildClass, supported_methods=['GET', 'GET_SUB', 'POST_SUB', 'DELETE', 'DELETE_SUB'], linked_objects=linked_objects)
 
 
 class MetaDataClassHandler(SimplifyView):
@@ -122,6 +132,8 @@ class PhaseGroupHandler(SimplifyView):
 
 
 class ModelWithParentResourceHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
     def __init__(self):
         linked_objects = []
         model_with_parent_resource = {
@@ -133,4 +145,8 @@ class ModelWithParentResourceHandler(SimplifyView):
             'lives_on_parent': False
         }
         linked_objects.append(model_with_parent_resource)
-        super().__init__(ModelWithParentResource, supported_methods=['GET_SUB'], linked_objects=linked_objects)
+        super().__init__(
+            ModelWithParentResource,
+            supported_methods=['GET_SUB', 'GET_LIST_SUB'],
+            linked_objects=linked_objects
+        )

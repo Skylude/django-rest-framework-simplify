@@ -1,11 +1,35 @@
 import uuid
 
 from random import randint
+from django.db import connection
 
 from test_app.models import *
 
 
 class DataGenerator:
+    @staticmethod
+    def str(length=16):
+        return str(uuid.uuid4())[:length]
+
+    @staticmethod
+    def set_up_sp_postgres_format():
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE OR REPLACE FUNCTION postgres_format (
+                    var_int int,
+                    var_str varchar
+                )
+                RETURNS TABLE (
+                    amount DECIMAL
+                ) AS $result$
+                BEGIN
+                RETURN QUERY SELECT var_int::DECIMAL AS "amount";
+                END; $result$
+                LANGUAGE 'plpgsql';
+                """
+            )
+
     @staticmethod
     def set_up_basic_class(name=None, child_one=None, child_two=None, active=True, write_db='default',
                            child_three_count=2, model_with_sensitive_data=None):
@@ -22,11 +46,11 @@ class DataGenerator:
         return basic_class
 
     @staticmethod
-    def set_up_child_class(name=None, write_db='default'):
+    def set_up_child_class(name=None, active=True, write_db='default'):
         if not name:
             name = str(uuid.uuid4())[:15]
 
-        child_class = ChildClass(name=name)
+        child_class = ChildClass(name=name, active=active)
         child_class.save(using=write_db)
         return child_class
 
@@ -126,8 +150,8 @@ class DataGenerator:
         return application
 
     @staticmethod
-    def set_up_model_with_parent_resource(basic_class=None):
-        model_with_parent_resource = ModelWithParentResource()
+    def set_up_model_with_parent_resource(basic_class=None, active=True):
+        model_with_parent_resource = ModelWithParentResource(active=active)
         if not basic_class:
             basic_class = DataGenerator.set_up_basic_class()
         model_with_parent_resource.basic_class = basic_class

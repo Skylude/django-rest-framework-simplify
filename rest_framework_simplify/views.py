@@ -37,6 +37,14 @@ class SimplifyView(APIView):
     def get_db_engine(self):
         return 'sql'
 
+    def get_queryset(self):
+        """
+        get_queryset returns the base manager for the SimplifyView's model. This method can be
+        overridden to modify the base manager on the server according to the request. This is
+        generally a good idea when the queryset should be limited by the user's permissions.
+        """
+        return self.model.objects
+
     def delete(self, request, pk=None, parent_resource=None, parent_pk=None):
         if parent_pk and parent_resource and self.linked_objects:
             if 'DELETE_SUB' not in self.supported_methods:
@@ -47,9 +55,10 @@ class SimplifyView(APIView):
                 return self.create_response(error_message=ErrorMessages.DELETE_NOT_SUPPORTED.format(self.model.__name__))
 
         try:
-            obj = self.model.objects.using(self.read_db).get(pk=pk)
+            obj = self.get_queryset().using(self.read_db).get(pk=pk)
         except self.DoesNotExist:
             raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+        self.check_object_permissions(request, obj)
 
         # check query param to only delete linker
         delete_link_only = request.query_params.get('deleteLinkOnly', False)
@@ -108,9 +117,10 @@ class SimplifyView(APIView):
                 empty_is_error = True
             # try to get the obj from db with no parent resource
             else:
-                obj = self.model.objects.using(self.read_db).filter(pk=pk)
+                obj = self.get_queryset().using(self.read_db).filter(pk=pk)
                 is_single_result = True
                 empty_is_error = True
+            self.check_object_permissions(request, obj)
 
         else:
             # we could be a sub resource so we need to check if a parent_resource was passed in
@@ -127,7 +137,7 @@ class SimplifyView(APIView):
                     linked_object = lives_on_parent_results[0]
                     child_id_field_name = linked_object['sub_resource_name']+'_id'
                     child_id = linked_object['parent_cls'].objects.using(self.read_db).values(child_id_field_name).get(pk=parent_pk)[child_id_field_name]
-                    obj = self.model.objects.using(self.read_db).filter(pk=child_id)
+                    obj = self.get_queryset().using(self.read_db).filter(pk=child_id)
                     is_single_result = True
                     # there is no empty_is_error here to preserve legacy behavior of empty object in this specific case
                 else:
@@ -144,7 +154,7 @@ class SimplifyView(APIView):
                 # trying to get ALL items in DB
                 if 'GET_LIST' not in self.supported_methods:
                     return self.create_response(error_message=ErrorMessages.GET_LIST_NOT_SUPPORTED.format(self.model.__name__))
-                obj = self.model.objects.using(self.read_db).all()
+                obj = self.get_queryset().using(self.read_db).all()
 
         # handle includes
         req_includes = request.query_params.get('include', [])
@@ -479,7 +489,6 @@ class SimplifyView(APIView):
             return self.create_response(body=body, serialize=True, include=include, exclude=excludes, fields=requested_fields,
                                                 count=total_items, using_cache=False, cache_key=cache_key)
 
-
     def get_field_nested(self, field_long_name):
         tree = field_long_name.split('__')
         if len(tree) == 1:
@@ -542,7 +551,7 @@ class SimplifyView(APIView):
                     if pk:
                             kwargs[linked_object['sub_resource_name']] = pk
                             if linked_object['linking_cls'].objects.using(self.read_db).filter(**kwargs).exists():
-                                return self.model.objects.using(read_db).filter(pk=pk)
+                                return self.get_queryset().using(self.read_db).filter(pk=pk)
                             else:
                                 raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
 
@@ -553,25 +562,27 @@ class SimplifyView(APIView):
                         # go through linking table items and get the sub resources from each entry into a list
                         linked_obj_ids = linked_objs.values_list(linked_object['sub_resource_name'] + '__id', flat=True)
 
-                        return self.model.objects.using(self.read_db).filter(pk__in=linked_obj_ids)
+                        return self.get_queryset().using(self.read_db).filter(pk__in=linked_obj_ids)
                 # no linking table and the link is on this obj itself
                 else:
                     # if we have a pk we only want the exact resource we are looking for
                     if pk:
                         kwargs['pk'] = pk
-                        return self.model.objects.using(self.read_db).filter(**kwargs)
+                        return self.get_queryset().using(self.read_db).filter(**kwargs)
                     # no pk was passed in meaning we are getting the entire list of items that match the parent resource
                     else:
-                        return self.model.objects.using(self.read_db).filter(**kwargs)
+                        return self.get_queryset().using(self.read_db).filter(**kwargs)
 
     def handle_exception(self, exc):
         status_code = status.HTTP_400_BAD_REQUEST
+        error_message = exceptions.APIException.default_detail
+
         if isinstance(exc, (exceptions.NotAuthenticated,
                             exceptions.AuthenticationFailed)):
             status_code = status.HTTP_403_FORBIDDEN
 
-        # grab error_message from exception
-        error_message = exc.args[0]
+        if exc.args:
+            error_message = exc.args[0]
 
         if hasattr(self.request.query_params, 'dict'):
             query_params = self.request.query_params.dict()
@@ -647,6 +658,8 @@ class SimplifyView(APIView):
                 return self.create_response(error_message=ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
                                             format(self.model.__name__))
 
+        self.perform_create(request.data)
+
         # occasionally we may need to transform the request to fit the model -- this is generally an unrestful call
         if hasattr(self.model, 'transform_request'):
             transformed_request = self.model.transform_request(request)
@@ -678,13 +691,32 @@ class SimplifyView(APIView):
 
         return self.create_response(obj, response_status=status.HTTP_201_CREATED, serialize=True)
 
+    def perform_create(self, request_body):
+        """
+        Similar to Rest Framework's `perform_create`, this method can be overridden to set defaults
+        based off the request and/or perform validation. For example, setting the request user id
+        on the request body or denying the user access to create the object. This differs from Rest
+        Framework's perform create in that Simplify views do not support serializers.
+        """
+        pass
+
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:
             return self.create_response(error_message=ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
+        self.perform_update(request.data)
         obj = self.model.parse(request.data, existing_id=pk, request=request)
-
+        self.check_object_permissions(request, obj)
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
+
+    def perform_update(self, request_body):
+        """
+        Similar to Rest Framework's `perform_update`, this method can be overridden to set defaults
+        based off the request and/or perform validation. For example, setting the request user id
+        on the request body or denying the user access to modify the object. This differs from Rest
+        Framework's perform update in that Simplify views do not support serializers.
+        """
+        pass
 
     def create_response(self, body=None, response_status=None, error_message=None, content_type='application/json', serialize=False, exclude=[], include=[], fields=[], count=None, using_cache=False, cache_key=None, optimized_serialize=False):
         if using_cache:
@@ -811,7 +843,7 @@ class SimplifyStoredProcedureView(APIView):
             return Response({'errorMessage': self.ErrorMessages.INVALID_STORED_PROCEDURE.format(sp_name)},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        form = form_cls(request.data)
+        form = form_cls(request.data, request=request)
 
         # validate the model that was sent in
         if form.is_valid():
@@ -882,7 +914,7 @@ class SimplifyEmailTemplateView(APIView):
             return Response({'errorMessage': self.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(template_name)},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        form = form_cls(request.data)
+        form = form_cls(request.data, request=request)
         res = form.send_email()
 
         # may need some type of serialization

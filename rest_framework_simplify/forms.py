@@ -17,14 +17,10 @@ class StoredProcedureForm(forms.Form):
         METHOD_NOT_IMPLEMENTED = 'Method not implemented for this engine'
 
     def __init__(self, *args, **kwargs):
-        # call base constructor
         connection_data = kwargs.pop('connection_data', None)
+        self.request = kwargs.pop('request', None)
         super(StoredProcedureForm, self).__init__(*args, **kwargs)
         # setup supported engines
-        self.engine_map = {
-            'sqlserver': SQLServerStoredProcedureForm,
-            'postgres': PostgresStoredProcedureForm
-        }
         self.sp_name = connection_data.get('sp_name', None)
 
         # make sure we are dealing with a supported engine
@@ -40,7 +36,6 @@ class StoredProcedureForm(forms.Form):
             'password': connection_data.get('password', None),
             'port': connection_data.get('port', None)
         }
-        self.__class__ = self.engine_map.get(self.engine, StoredProcedureForm)
 
     def execute_sp(self):
         # call stored procedure
@@ -52,18 +47,33 @@ class StoredProcedureForm(forms.Form):
             port=self.connection_data['port'],
             engine=self.engine
         )
-        result = sp_service.call_stored_procedure(self.sp_name, self.format_params)
+        result = sp_service.call_stored_procedure(self.sp_name, self._formatter)
 
         for item in result:
             handle_bytes_decoding(item)
 
         return result
 
+    @property
+    def _formatter(self):
+        if self.engine == 'sqlserver':
+            return self.sql_server_format
+        if self.engine == 'postgres':
+            return self.postgres_format
+        raise Exception(f'engine {self.engine} has no formatter defined')
 
+    def sql_server_format(self, sp_params):
+        params = []
+        for field in sp_params:
+            try:
+                field_name = field.lstrip('@')
+                params.append(self.cleaned_data[field_name])
+            except KeyError:
+                # issue with data
+                raise KeyError
+        return params
 
-class PostgresStoredProcedureForm(StoredProcedureForm):
-    # method will get params and put form parameters in the correct order that the stored procedure needs
-    def format_params(self, sp_params):
+    def postgres_format(self, sp_params):
         params = []
         for field in sp_params:
             try:
@@ -72,20 +82,6 @@ class PostgresStoredProcedureForm(StoredProcedureForm):
                     params.append(self.cleaned_data[field])
                 else:
                     params.append(None)
-            except KeyError:
-                # issue with data
-                raise KeyError
-        return params
-
-
-class SQLServerStoredProcedureForm(StoredProcedureForm):
-    # method will get params and put form parameters in the correct order that the stored procedure needs
-    def format_params(self, sp_params):
-        params = []
-        for field in sp_params:
-            try:
-                field_name = field.lstrip('@')
-                params.append(self.cleaned_data[field_name])
             except KeyError:
                 # issue with data
                 raise KeyError
@@ -106,6 +102,7 @@ class EmailTemplateForm(forms.Form):
     def __init__(self, *args, **kwargs):
         # call base constructor
         default_data = kwargs.pop('default_data', None)
+        self.request = kwargs.pop('request', None)
         super(EmailTemplateForm, self).__init__(*args, **kwargs)
         # setup template
         self.default_data = {

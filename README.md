@@ -259,3 +259,150 @@ urlpatterns = [
 
 Now we can:
  * POST `/sendEmail` `{'templateName': 'DynamicEmail', 'to': 'to_address@test.com', 'firstName': 'Chris', 'signUpUrl': 'https://github.com/Skylude/django-rest-framework-simplify', 'teamName': 'My Team'}` => This will create the email and call `EmailService.send_email` with your form data. You can then choose what to do with that.
+
+
+## Permissions
+
+Simplify provides a variety of methods for customizing permissions that are heavily inspired by
+[Rest Framework permissions](https://www.django-rest-framework.org/api-guide/permissions/).
+
+### Permission class support
+
+Permission classes work as you would expect in Rest Framework. A default permission class may be
+specified per Rest Framework's guidelines, otherwise the `AllowAny` permission class will be used.
+Another option is to specify permission classes at the view level. This can be accomplished with the
+`permission_classes` attribute or the `permission_classes` decorator if you are using function based
+views. Custom permission classes are implemented by extending BasePermission which consists of two
+methods `has_permission` and `has_object_permission`.
+
+As advertised in Rest Framework's documentation, permission classes may be composed using bitwise
+operators. `&` (and), `|` (or), and `~` (not). For example, `permissions_classes = [Super & ~Evil]`
+a super user who is not evil.
+
+`has_permission` is invoked before each handler (`get`, `put`, `post`, `delete`) and is intended to
+resolve permissions pertaining to the model type rather than an instance of the model. Such as the
+user's permission to read/write all instances of `FooModel` based on their user role.
+
+`has_object_permission` is for resolving "row" level permissions. For example, the user may only
+edit objects related to the user. `has_object_permission` is invoked when the desired instance is
+fetched. Note `has_object_permission` is not invoked for a list view due to performance reasons or a
+post because there is no instance. This behavior translates to Rest Framework's way of doing things.
+
+Example:
+```python
+class BasicPermission(BasePermission):
+    def has_permission(self, request, view):
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        return True
+
+
+class FooHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
+    def __init__(self):
+        super().__init__(FooModel, supported_methods=['GET'])
+```
+
+### Queryset permission support
+
+Permission support for a list view is facilitated by `get_queryset` whose implementation is
+`return self.model.objects`. While `get_queryset` solves the problem of object level permissions on
+a list view it also solves object permissions for single objects. The difference is a 404 type
+exception will be raised instead of a 403 type exception. Queryset based permissions are not
+sufficient for locking down all actions as `put` and `post` do not use the specified queryset.
+
+Example:
+```python
+class FooHandler(SimplifyView):
+    def __init__(self):
+        super().__init__(FooModel, supported_methods=['GET'])
+
+    def get_queryset(self):
+        return super().get_queryset().filter(user=self.request.user)
+```
+
+### Object creation permissions
+
+Permissions for `post` requests are supported by `perform_create`. Keep in mind `has_permission` is
+still invoked for post requests, but `has_object_permission` is not. `perform_create` is a good
+place to set defaults the client should not be trusted to set or to reject creation based on the
+user's permissions.
+
+Example:
+```python
+class FooHandler(SimplifyView):
+    def __init__(self):
+        super().__init__(FooModel, supported_methods=['POST'])
+
+    def perform_create(self, request_body):
+        if request_body['group_id'] != self.request.user.group_id:
+            raise ValidationError()
+        request_body['created_by_id'] = request.user.id
+```
+
+### Object update permissions
+
+While `put` requests invoke `has_object_permission` you may want to set defaults or perform
+validation specific to a `put` request. `perform_update` is provided for these use cases.
+
+Example:
+```python
+class FooHandler(SimplifyView):
+    def __init__(self):
+        super().__init__(FooModel, supported_methods=['PUT'])
+
+    def perform_update(self, request_body):
+        if request_body['group_id'] != self.request.user.group_id:
+            raise ValidationError()
+        request_body['updated_by_id'] = request.user.id
+```
+
+### Stored procedure forms
+
+Stored procedure forms can perform validation and/or transformation by overriding the `clean` method
+inherited from the Django `BaseForm` class. The `request` object is provided to the `clean` method
+so the `user` may be accessed during cleaning.
+
+Example:
+```python
+class PostgresForm(StoredProcedureForm):
+    var_int = forms.IntegerField(required=True)
+
+    def __init__(self, *args, **kwargs):
+        kwargs['connection_data'] = {
+          # ...
+        }
+        super(PostgresFormatForm, self).__init__(*args, **kwargs)
+
+    def clean(self):
+        if not self.request.user.is_super:
+            return PermissionDenied()
+        self.cleaned_data['var_int'] += 1
+        return self.super().clean()
+```
+
+### Email forms
+
+Email forms can perform validation and/or transformation by overriding the `clean` method inherited
+from the Django `BaseForm` class. The `request` object is provided to the `clean` method so the
+`user` may be accessed during cleaning.
+
+Example:
+```python
+class FooEmailTemplate(EmailTemplateForm):
+    to = forms.CharField(required=True)
+
+    def __init__(self, *args, **kwargs):
+        kwargs['default_data'] = {
+          # ...
+        }
+        super(DynamicEmailTemplate, self).__init__(*args, **kwargs)
+
+    def clean(self):
+        if not self.request.user.is_super:
+            raise ValidationError('you gotta be super')
+        self.cleaned_data['from'] = self.request.user.email
+        return self.super().clean()
+```

@@ -1,6 +1,7 @@
 import django
 import os
 import unittest.mock
+from unittest.mock import patch, Mock
 import uuid
 
 
@@ -9,16 +10,304 @@ django.setup()
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 from decimal import Decimal
 from rest_framework_simplify.errors import ErrorMessages
 from rest_framework_simplify.helpers import generate_str
 from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyEmailTemplateView
 from rest_framework import status
 from rest_framework.test import APIClient
+from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
 from test_app.tests.helpers import DataGenerator
-from test_app.models import BasicClass, ChildClass, LinkingClass, Application
+from test_app.models import BasicClass, ChildClass, LinkingClass, Application, ModelWithParentResource
+
+
+@patch('test_app.views.BasicPermission.has_object_permission', Mock(return_value=False))
+class HasObjectPermissionTests(unittest.TestCase):
+    api_client = APIClient()
+
+    def test_delete_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.delete(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        BasicClass.objects.get(id=bc.id)
+
+    def test_delete_sub_denies(self):
+        # arrange
+        c = DataGenerator.set_up_child_class()
+        b = DataGenerator.set_up_basic_class(child_one=c)
+        url = f'/basicClass/{b.id}/childClass/{c.id}'
+
+        # act
+        res = self.api_client.delete(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        BasicClass.objects.get(id=b.id)
+        ChildClass.objects.get(id=c.id)
+
+    def test_put_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(name='before')
+        url = f'/basicClass/{bc.id}'
+        body = {
+            'name': 'after'
+        }
+
+        # act
+        res = self.api_client.put(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        bc.refresh_from_db()
+        self.assertEqual(bc.name, 'before')
+
+    def test_get_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(res.data), 1)
+        self.assertIsNotNone(res.data['errorMessage'])
+
+    def test_get_sub_pk_denies(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        c = DataGenerator.set_up_model_with_parent_resource(basic_class=bc)
+        url = f'/basicClasses/{bc.id}/modelWithParentResources/{c.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(res.data), 1)
+        self.assertIsNotNone(res.data['errorMessage'])
+
+
+class PerformCreateTests(unittest.TestCase):
+    api_client = APIClient()
+
+    @patch('test_app.views.BasicClassHandler.perform_create')
+    def test_post_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = PermissionDenied()
+        url = '/basicClass'
+        name = DataGenerator.str(15)
+        body = {
+            'name': name
+        }
+
+        # act
+        res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(BasicClass.objects.filter(name=name).exists())
+
+    def test_post_transforms(self):
+        # arrange
+        url = '/basicClass'
+        body = {
+            'name': 'gud name'
+        }
+        transformed_name = 'gudder name'
+        def perform_create_mock(self, request_data):
+            request_data['name'] = transformed_name
+
+        # act
+        with patch('test_app.views.BasicClassHandler.perform_create', new=perform_create_mock):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data['name'], transformed_name)
+        self.assertTrue(BasicClass.objects.filter(name=transformed_name).exists())
+
+    @patch('test_app.views.ChildClassHandler.perform_create')
+    def test_post_sub_lives_on_parent_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = PermissionDenied('gud error')
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClasses/{bc.id}/childOne'
+        body = {
+            'name': 'gud name'
+        }
+
+        # act
+        res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data['errorMessage'], 'gud error')
+        bc.refresh_from_db()
+        self.assertIsNone(bc.child_one)
+
+    @patch('test_app.views.LinkingClassHandler.perform_create')
+    def test_post_sub_link_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = ValidationError()
+        bc = DataGenerator.set_up_basic_class()
+        url = f'/basicClasses/{bc.id}/childClass'
+        body = {
+            'name': 'gud name'
+        }
+
+        # act
+        res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, ValidationError.status_code)
+        self.assertIsNotNone(res.data.get('errorMessage'))
+        self.assertFalse(LinkingClass.objects.filter(basic_class_id=bc.id).exists())
+
+
+class PerformUpdateTests(unittest.TestCase):
+    api_client = APIClient()
+
+    @patch('test_app.views.BasicClassHandler.perform_update')
+    def test_put_denies(self, mock_perform):
+        # arrange
+        mock_perform.side_effect = PermissionDenied()
+        bc = DataGenerator.set_up_basic_class(name='gud name')
+        url = f'/basicClass/{bc.id}'
+        name = DataGenerator.str(15)
+        body = {
+            'name': name
+        }
+
+        # act
+        res = self.api_client.put(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(BasicClass.objects.get(id=bc.id).name, 'gud name')
+
+    def test_put_transforms(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(name='gud name')
+        url = f'/basicClass/{bc.id}'
+        body = {}
+        transformed_name = 'gudder name'
+        def perform_update_mock(self, request_data):
+            request_data['name'] = transformed_name
+
+        # act
+        with patch('test_app.views.BasicClassHandler.perform_update', new=perform_update_mock):
+            res = self.api_client.put(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(BasicClass.objects.get(id=bc.id).name, transformed_name)
+
+
+class GetQuerysetTests(unittest.TestCase):
+    api_client = APIClient()
+
+    @patch(
+        'test_app.views.BasicClassHandler.get_queryset',
+        Mock(return_value=BasicClass.objects.filter(active=True))
+    )
+    def test_get_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(active=False)
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.data['errorMessage'],
+            ErrorMessages.DOES_NOT_EXIST.format(BasicClass.__name__, bc.id)
+        )
+
+    @patch(
+        'test_app.views.ModelWithParentResourceHandler.get_queryset',
+        Mock(return_value=ModelWithParentResource.objects.filter(active=True))
+    )
+    def test_get_sub_pk_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        c = DataGenerator.set_up_model_with_parent_resource(basic_class=bc, active=False)
+        url = f'/basicClasses/{bc.id}/modelWithParentResources/{c.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            res.data['errorMessage'],
+            ErrorMessages.DOES_NOT_EXIST.format(ModelWithParentResource.__name__, c.id)
+        )
+
+    @patch(
+        'test_app.views.ChildClassHandler.get_queryset',
+        Mock(return_value=ChildClass.objects.filter(active=True))
+    )
+    def test_get_sub_override_querysest(self):
+        # arrange
+        c = DataGenerator.set_up_child_class(active=False)
+        bc = DataGenerator.set_up_basic_class(child_one=c)
+        url = f'/basicClass/{bc.id}/childOne'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        # Note the GET_SUB path expects an empty object instead of a DoesNotExist type error here
+        # for legacy reasons.
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+
+    @patch(
+        'test_app.views.ModelWithParentResourceHandler.get_queryset',
+        Mock(return_value=ModelWithParentResource.objects.filter(active=True))
+    )
+    def test_get_list_sub_override_querysest(self):
+        # arrange
+        b = DataGenerator.set_up_basic_class()
+        DataGenerator.set_up_model_with_parent_resource(basic_class=b, active=False)
+        url = f'/basicClasses/{b.id}/modelWithParentResources'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+
+    @patch(
+        'test_app.views.BasicClassHandler.get_queryset',
+        Mock(return_value=BasicClass.objects.filter(active=True))
+    )
+    def test_get_list_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(active=False)
+        url = f'/basicClass?filters=id={bc.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+        self.assertNotIn(bc.id, [d['id'] for d in res.data])
 
 
 class BasicClassTests(unittest.TestCase):
@@ -178,7 +467,7 @@ class BasicClassTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
 
-    def test_get_list_sub(self):
+    def test_get_sub(self):
         # arrange
         child_one = DataGenerator.set_up_child_class()
         basic_class = DataGenerator.set_up_basic_class(child_one=child_one)
@@ -191,7 +480,20 @@ class BasicClassTests(unittest.TestCase):
         basic_class.refresh_from_db()
         self.assertEqual(child_one.id, result.data['id'])
 
-    def test_get_list_sub_with_no_child_resource(self):
+    def test_get_sub_pk_linking_cls(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class()
+        c = DataGenerator.set_up_child_class()
+        DataGenerator.set_up_linking_class(basic_class=bc, child_class=c)
+        url = f'/basicClasses/{bc.id}/childClass/{c.id}'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_get_sub_with_no_child_resource(self):
         # arrange
         basic_class = DataGenerator.set_up_basic_class(child_one=None)
         url = '/basicClass/{0}/childOne'.format(basic_class.id)
@@ -201,6 +503,18 @@ class BasicClassTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.data, {})
+
+    def test_get_list_sub(self):
+        # arrange
+        b = DataGenerator.set_up_basic_class()
+        DataGenerator.set_up_model_with_parent_resource(basic_class=b)
+        url = f'/basicClasses/{b.id}/modelWithParentResources'
+
+        # act
+        res = self.api_client.get(url, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_post_sub_resource_to_child_(self):
         # arrange
@@ -433,7 +747,6 @@ class BasicClassTests(unittest.TestCase):
         self.assertEqual(len(result.data), 1)
 
 
-
 class ReadReplicaTests(unittest.TestCase):
     api_client = APIClient()
 
@@ -502,6 +815,48 @@ class StoredProcedureTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(result.data[0]['amount'], 612)
+
+    def test_clean_denies(self):
+        # arrange
+        url = '/sqlStoredProcedures'
+        body = {
+            'spName': 'TestSQLServerStoredProc',
+            'testId': 1234
+        }
+        def clean_mock(self):
+            raise ValidationError('invalid user')
+
+        # act
+        with patch('test_app.forms.TestSQLServerStoredProcForm.clean', new=clean_mock):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data['errorMessage'], 'invalid user')
+
+    @unittest.skipUnless(
+        settings.DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql',
+        'requires postgres connection'
+    )
+    def test_clean_transforms(self):
+        # arrange
+        DataGenerator.set_up_sp_postgres_format()
+        url = '/postgresStoredProcedures'
+        body = {
+            'spName': 'postgres_format',
+            'var_int': 1
+        }
+        def clean_mock(self):
+            self.cleaned_data['var_int'] = 2
+            return self.cleaned_data
+
+        # act
+        with patch('test_app.forms.PostgresFormatForm.clean', new=clean_mock):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data[0]['amount'], Decimal(2))
 
     def test_post_invalid_sp_returns_invalid_sp_error(self):
         # arrange
@@ -673,6 +1028,49 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
+
+    def test_send_email_clean_denies(self):
+        # arrange
+        url = '/sendEmail'
+        body = {
+            'templateName': 'DynamicEmail',
+            'to': 'you@example.com',
+            'firstName': 'Chris',
+            'teamName': 'Our Team',
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+        }
+        def mock_clean(self):
+            raise ValidationError('unable to validate')
+
+        # act
+        with patch('test_app.email_templates.DynamicEmailTemplate.clean', new=mock_clean):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data['errorMessage'], 'unable to validate')
+
+    def test_send_email_clean_transforms(self):
+        # arrange
+        url = '/sendEmail'
+        body = {
+            'templateName': 'DynamicEmail',
+            'to': 'you@example.com',
+            'firstName': 'Chris',
+            'teamName': 'Our Team',
+            'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
+        }
+        def mock_clean(self):
+            self.cleaned_data['to'] = 'wrong' if self.request.user.is_superuser else 'transformed@example.com'
+            return self.cleaned_data
+
+        # act
+        with patch('test_app.email_templates.DynamicEmailTemplate.clean', new=mock_clean):
+            res = self.api_client.post(url, body, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['to'], 'transformed@example.com')
 
 
 class OneToOneTests(unittest.TestCase):
