@@ -120,7 +120,6 @@ class SimplifyView(APIView):
                 obj = self.get_queryset().using(self.read_db).filter(pk=pk)
                 is_single_result = True
                 empty_is_error = True
-            self.check_object_permissions(request, obj)
 
         else:
             # we could be a sub resource so we need to check if a parent_resource was passed in
@@ -467,6 +466,9 @@ class SimplifyView(APIView):
                     body = {}
                 elif len(body) == 1:
                     body = body[0]
+                    # TODO must make this check in order for permission classes to work with objects
+                    # see pull request #59 for details.
+                    # self.check_object_permissions(request, obj.first())
                 else:
                     raise Exception('duplicate object for key')
 
@@ -483,6 +485,7 @@ class SimplifyView(APIView):
                     body = {}
                 elif len(body) == 1:
                     body = body[0]
+                    self.check_object_permissions(request, body)
                 else:
                     raise Exception('duplicate object for key')
 

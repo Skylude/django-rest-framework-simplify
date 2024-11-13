@@ -266,45 +266,6 @@ Now we can:
 Simplify provides a variety of methods for customizing permissions that are heavily inspired by
 [Rest Framework permissions](https://www.django-rest-framework.org/api-guide/permissions/).
 
-### Permission class support
-
-Permission classes work as you would expect in Rest Framework. A default permission class may be
-specified per Rest Framework's guidelines, otherwise the `AllowAny` permission class will be used.
-Another option is to specify permission classes at the view level. This can be accomplished with the
-`permission_classes` attribute or the `permission_classes` decorator if you are using function based
-views. Custom permission classes are implemented by extending BasePermission which consists of two
-methods `has_permission` and `has_object_permission`.
-
-As advertised in Rest Framework's documentation, permission classes may be composed using bitwise
-operators. `&` (and), `|` (or), and `~` (not). For example, `permissions_classes = [Super & ~Evil]`
-a super user who is not evil.
-
-`has_permission` is invoked before each handler (`get`, `put`, `post`, `delete`) and is intended to
-resolve permissions pertaining to the model type rather than an instance of the model. Such as the
-user's permission to read/write all instances of `FooModel` based on their user role.
-
-`has_object_permission` is for resolving "row" level permissions. For example, the user may only
-edit objects related to the user. `has_object_permission` is invoked when the desired instance is
-fetched. Note `has_object_permission` is not invoked for a list view due to performance reasons or a
-post because there is no instance. This behavior translates to Rest Framework's way of doing things.
-
-Example:
-```python
-class BasicPermission(BasePermission):
-    def has_permission(self, request, view):
-        return True
-
-    def has_object_permission(self, request, view, obj):
-        return True
-
-
-class FooHandler(SimplifyView):
-    permission_classes = [BasicPermission]
-
-    def __init__(self):
-        super().__init__(FooModel, supported_methods=['GET'])
-```
-
 ### Queryset permission support
 
 Permission support for a list view is facilitated by `get_queryset` whose implementation is
@@ -405,4 +366,46 @@ class FooEmailTemplate(EmailTemplateForm):
             raise ValidationError('you gotta be super')
         self.cleaned_data['from'] = self.request.user.email
         return self.super().clean()
+```
+
+### Permission class support
+
+> [!CAUTION]
+> Permission classes making use of `has_object_permission` are partially implemented and should not be relied on.
+
+Permission classes work as you would expect in Rest Framework. A default permission class may be
+specified per Rest Framework's guidelines, otherwise the `AllowAny` permission class will be used.
+Another option is to specify permission classes at the view level. This can be accomplished with the
+`permission_classes` attribute or the `permission_classes` decorator if you are using function based
+views. Custom permission classes are implemented by extending BasePermission which consists of two
+methods `has_permission` and `has_object_permission`.
+
+As advertised in Rest Framework's documentation, permission classes may be composed using bitwise
+operators. `&` (and), `|` (or), and `~` (not). For example, `permissions_classes = [Super & ~Evil]`
+a super user who is not evil.
+
+`has_permission` is invoked before each handler (`get`, `put`, `post`, `delete`) and is intended to
+resolve permissions pertaining to the model type rather than an instance of the model. Such as the
+user's permission to read/write all instances of `FooModel` based on their user role.
+
+`has_object_permission` is for resolving "row" level permissions. For example, the user may only
+edit objects related to the user. `has_object_permission` is invoked when the desired instance is
+fetched. Note `has_object_permission` is not invoked for a list view due to performance reasons or a
+post because there is no instance. This behavior translates to Rest Framework's way of doing things.
+
+Example:
+```python
+class BasicPermission(BasePermission):
+    def has_permission(self, request, view):
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        return True
+
+
+class FooHandler(SimplifyView):
+    permission_classes = [BasicPermission]
+
+    def __init__(self):
+        super().__init__(FooModel, supported_methods=['GET'])
 ```
