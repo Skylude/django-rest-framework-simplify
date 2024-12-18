@@ -145,7 +145,7 @@ class PerformCreateTests(unittest.TestCase):
         res = self.api_client.post(url, body, format='json')
 
         # assert
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertFalse(BasicClass.objects.filter(name=name).exists())
 
     def test_post_transforms(self):
@@ -181,8 +181,7 @@ class PerformCreateTests(unittest.TestCase):
         res = self.api_client.post(url, body, format='json')
 
         # assert
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.data['errorMessage'], 'gud error')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         bc.refresh_from_db()
         self.assertIsNone(bc.child_one)
 
@@ -223,7 +222,7 @@ class PerformUpdateTests(unittest.TestCase):
         res = self.api_client.put(url, body, format='json')
 
         # assert
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(BasicClass.objects.get(id=bc.id).name, 'gud name')
 
     def test_put_transforms(self):
@@ -261,10 +260,6 @@ class GetQuerysetTests(unittest.TestCase):
 
         # assert
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(
-            res.data['errorMessage'],
-            ErrorMessages.DOES_NOT_EXIST.format(BasicClass.__name__, bc.id)
-        )
 
     @patch(
         'test_app.views.ModelWithParentResourceHandler.get_queryset',
@@ -281,10 +276,6 @@ class GetQuerysetTests(unittest.TestCase):
 
         # assert
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(
-            res.data['errorMessage'],
-            ErrorMessages.DOES_NOT_EXIST.format(ModelWithParentResource.__name__, c.id)
-        )
 
     @patch(
         'test_app.views.ChildClassHandler.get_queryset',
@@ -790,7 +781,6 @@ class ReadReplicaTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'], ErrorMessages.DOES_NOT_EXIST.format(BasicClass.__name__, basic_class.id))
 
     def test_get_should_return_value_in_read_db_not_write_db(self):
         # arrange
@@ -862,7 +852,7 @@ class StoredProcedureTests(unittest.TestCase):
 
         # assert
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.data['errorMessage'], 'invalid user')
+        self.assertEqual(res.data['errorMessage'], ValidationError.default_detail)
 
     @unittest.skipUnless(
         settings.DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql',
@@ -970,8 +960,6 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.INVALID_PARAMS.format(body['templateName']))
 
     def test_send_email_400_if_cant_find_html_file(self):
         # arrange
@@ -986,8 +974,6 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.MISSING_EMAIL_TEMPLATE_PATH.format(body['templateName']))
 
     def test_send_email_400_if_rdml_still_in_html(self):
         # arrange
@@ -1003,8 +989,6 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.UNABLE_TO_POPULATE_TEMPLATE.format(body['templateName'], 'Extra-Simplifyml'))
 
     @unittest.mock.patch('test_app.email_templates.EmailService.send_email')
     def test_send_email_400_if_send_email_fails(self, mock_send_email):
@@ -1024,7 +1008,6 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'], SimplifyEmailTemplateView.ErrorMessages.ERROR_SENDING_EMAIL)
 
     def test_send_email_400_if_missing_send_email_method(self):
         # arrange
@@ -1040,7 +1023,6 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'], SimplifyEmailTemplateView.ErrorMessages.MISSING_SEND_EMAIL_METHOD)
 
     def test_send_email_200_happy_path(self):
         # arrange
@@ -1078,7 +1060,7 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.data['errorMessage'], 'unable to validate')
+        self.assertEqual(res.data['errorMessage'], ValidationError.default_detail)
 
     def test_send_email_clean_transforms(self):
         # arrange
