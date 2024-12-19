@@ -54,7 +54,7 @@ def _django_to_rest_framework(exc):
     return exc
 
 
-def _log_exception(exc: Exception, context: _Context, status_code: int, error_message):
+def _log_exception(exc: Exception, context: _Context, status_code: int, error_message: str):
     last_frame, last_lineno = list(traceback.walk_tb(exc.__traceback__))[-1]
     exc_filename = last_frame.f_code.co_filename
     exc_lineno = last_lineno
