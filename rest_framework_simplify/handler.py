@@ -1,5 +1,4 @@
 import logging
-import traceback
 from typing import TypedDict
 
 from django.http import Http404
@@ -55,11 +54,6 @@ def _django_to_rest_framework(exc):
 
 
 def _log_exception(exc: Exception, context: _Context, status_code: int, error_message: str):
-    last_frame, last_lineno = list(traceback.walk_tb(exc.__traceback__))[-1]
-    exc_filename = last_frame.f_code.co_filename
-    exc_lineno = last_lineno
-    exc_func = last_frame.f_code.co_name
-
     logger = logging.getLogger('rest-framework-simplify-exception')
     extra = {
         'rq_query_params': context['request'].query_params,
@@ -67,9 +61,6 @@ def _log_exception(exc: Exception, context: _Context, status_code: int, error_me
         'rq_method': context['request'].method,
         'rq_path': context['request'].path,
         'rs_status_code': status_code,
-        'exc_filename': exc_filename,
-        'exc_lineno': exc_lineno,
-        'exc_func': exc_func,
         'exc_first_arg': exc.args[0] if exc.args else None,
         'exc_detail': exc.detail if isinstance(exc, exceptions.APIException) else None
     }
