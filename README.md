@@ -13,6 +13,14 @@ CACHES = {
 }
 ```
 
+To use the [Simplify exception handler](#exceptions) you must define it in the REST_FRAMEWORK settings:
+```python
+REST_FRAMEWORK = {
+  'EXCEPTION_HANDLER': 'rest_framework_simplify.handler.exception_handler'
+}
+```
+The logger named `rest-framework-simplify-exception` must be configured to see the logs.
+
 
 ## Models
 Django Rest Framework Simplify provides a `SimplifyModel` class, which subclasses Django's `DjangoModel` class. The `SimplifyModel` allows you to have additional properties on your model, for example:
@@ -409,3 +417,34 @@ class FooHandler(SimplifyView):
     def __init__(self):
         super().__init__(FooModel, supported_methods=['GET'])
 ```
+
+## Exceptions
+
+See the [Settings](#settings) section for information on configuring the custom exception handler.
+
+The Simplify exception handler aims to log detailed exceptions and return vague error messages to
+consumers. This decision was made for security reasons.
+
+Rest Framework's exceptions that extend APIException will propagate their status_code and
+default_detail to the JSON response.
+
+In order to raise a custom exception that will propagate to the JSON response you must extend Rest
+Framework's APIException like so:
+```python
+from rest_framework.exceptions import APIException
+
+
+class FooException(APIException):
+    status_code = 418
+    default_detail = 'Foo message.'
+```
+
+These JSON responses are of a consistent format like the following:
+```json
+{
+  "errorMessage": "Foo message."
+}
+```
+
+Additionally, the Simplify error handler converts Django exceptions to Rest Framework's equivalents
+like the default Rest Framework exception handler.

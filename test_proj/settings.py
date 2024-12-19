@@ -71,6 +71,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'test_proj.wsgi.application'
 
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'rest_framework_simplify.handler.exception_handler'
+}
 
 # Database
 # https://docs.djangoproject.com/en/1.9/ref/settings/#databases
