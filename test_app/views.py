@@ -150,3 +150,8 @@ class ModelWithParentResourceHandler(SimplifyView):
             supported_methods=['GET_SUB', 'GET_LIST_SUB'],
             linked_objects=linked_objects
         )
+
+
+class ThrowHandler(SimplifyView):
+    def __init__(self):
+        super().__init__(None, supported_methods=['POST'])

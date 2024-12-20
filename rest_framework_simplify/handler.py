@@ -45,7 +45,7 @@ def exception_handler(exc: Exception, context: _Context) -> Response:
     )
 
 
-def _django_to_rest_framework(exc):
+def _django_to_rest_framework(exc: Exception):
     if isinstance(exc, Http404):
         return exceptions.NotFound()
     if isinstance(exc, PermissionDenied):
