@@ -38,18 +38,14 @@ def exception_handler(exc: Exception, context: _Context) -> Response:
 
     _log_exception(exc, context, status_code, error_message)
 
-    return Response(
-        { 'errorMessage': error_message },
-        status=status_code,
-        content_type='application/json'
-    )
+    return Response({ 'errorMessage': error_message }, status=status_code)
 
 
 def _django_to_rest_framework(exc: Exception):
     if isinstance(exc, Http404):
-        return exceptions.NotFound()
+        return exceptions.NotFound(*exc.args)
     if isinstance(exc, PermissionDenied):
-        return exceptions.PermissionDenied()
+        return exceptions.PermissionDenied(*exc.args)
     return exc
 
 
