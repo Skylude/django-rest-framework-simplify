@@ -7,6 +7,8 @@ from django.core.exceptions import PermissionDenied
 from rest_framework.test import APIClient
 from rest_framework import exceptions, status
 
+from rest_framework_simplify.exceptions import SimplifyAPIException
+
 
 @unittest.mock.patch('test_app.views.ThrowHandler.post')
 class ThrowHandlerTests(unittest.TestCase):
@@ -71,6 +73,18 @@ class ThrowHandlerTests(unittest.TestCase):
         # assert
         self.assertEqual(res.status_code, FooException.status_code)
         self.assertEqual(res.data['errorMessage'], FooException.default_detail)
+
+    def test_simplify_api_exception(self, mock_post):
+        # arrange
+        m = 'gud error'
+        mock_post.side_effect = SimplifyAPIException(m, status.HTTP_418_IM_A_TEAPOT)
+
+        # act
+        res = self.api_client.post('/throws')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_418_IM_A_TEAPOT)
+        self.assertEqual(res.data['errorMessage'], m)
 
     def test_exceptions_log(self, mock_post):
         # arrange
