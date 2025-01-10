@@ -1,7 +1,5 @@
 import datetime
 import dateutil.parser
-import logging
-import traceback
 
 from collections import OrderedDict
 from decimal import Decimal
@@ -9,17 +7,13 @@ from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F, CharField, Value
 from django.db.models.fields.related import ForeignKey, OneToOneField, ManyToOneRel, ManyToManyRel, OneToOneRel
-from rest_framework import exceptions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from rest_framework_simplify.exceptions import ParseException
-from rest_framework_simplify.helpers import binary_string_to_string
 from rest_framework_simplify.helpers import handle_bytes_decoding
 from rest_framework_simplify.mapper import Mapper
 from rest_framework_simplify.serializer import SQLEngineSerializer
-from rest_framework_simplify.services.sql_executor.service import SQLExecutorService
 from rest_framework_simplify.errors import ErrorMessages
 
 
@@ -576,54 +570,6 @@ class SimplifyView(APIView):
                     else:
                         return self.get_queryset().using(self.read_db).filter(**kwargs)
 
-    def handle_exception(self, exc):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = exceptions.APIException.default_detail
-
-        if isinstance(exc, (exceptions.NotAuthenticated,
-                            exceptions.AuthenticationFailed)):
-            status_code = status.HTTP_403_FORBIDDEN
-
-        if exc.args:
-            error_message = exc.args[0]
-
-        if hasattr(self.request.query_params, 'dict'):
-            query_params = self.request.query_params.dict()
-        else:
-            query_params = self.request.query_params
-
-        if hasattr(self.request.data, 'dict'):
-            request_data = self.request.data.dict()
-        else:
-            request_data = self.request.data
-
-        # only want the last frame in generator
-        exc_frame = None
-        exc_filename = None
-        exc_lineno = None
-        exc_func = None
-        for frame, lineno in traceback.walk_tb(exc.__traceback__):
-            exc_frame = frame
-            exc_lineno = lineno
-            exc_func = frame.f_code.co_name
-            exc_filename = frame.f_code.co_filename
-
-        # log error
-        logger = logging.getLogger('rest-framework-simplify-exception')
-        extra_logging = {
-            'rq_query_params': query_params,
-            'rq_data': request_data,
-            'rq_method': self.request.method,
-            'rq_path': self.request.path,
-            'rs_status_code': status_code,
-            'exc_filename': exc_filename,
-            'exc_func': exc_func,
-            'exc_lineno': exc_lineno
-        }
-
-        logger.error(error_message, extra=extra_logging)
-        return self.create_response(error_message=error_message, response_status=status_code)
-
     def post(self, request, parent_resource=None, parent_pk=None):
         # check we are authorized to POST
         if not parent_resource and not parent_pk and 'POST' not in self.supported_methods:
@@ -801,36 +747,6 @@ class SimplifyStoredProcedureView(APIView):
         INVALID_STORED_PROCEDURE = 'Stored procedure {0} is not defined'
         INVALID_PARAMS = 'Params for stored procedure {0} invalid'
 
-    def handle_exception(self, exc):
-        status_code = status.HTTP_400_BAD_REQUEST
-        if isinstance(exc, (exceptions.NotAuthenticated,
-                            exceptions.AuthenticationFailed)):
-            status_code = status.HTTP_403_FORBIDDEN
-        error_message = exc.args[0]
-
-        if hasattr(self.request.query_params, 'dict'):
-            query_params = self.request.query_params.dict()
-        else:
-            query_params = self.request.query_params
-
-        if hasattr(self.request.data, 'dict'):
-            request_data = self.request.data.dict()
-        else:
-            request_data = self.request.data
-
-        # log error
-        logger = logging.getLogger('rest-framework-simplify-exception')
-        extra_logging = {
-            'rq_query_params': query_params,
-            'rq_data': request_data,
-            'rq_method': self.request.method,
-            'rq_path': self.request.path,
-            'rs_status_code': status_code
-        }
-        logger.error(error_message, extra=extra_logging)
-
-        return Response({'errorMessage': error_message}, status=status_code)
-
     def post(self, request):
         sp_name = request.data.get('spName', None)
         # get form based on sp_name
@@ -875,36 +791,6 @@ class SimplifyEmailTemplateView(APIView):
         ERROR_SENDING_EMAIL = 'An error occurred while sending the email'
         UNABLE_TO_POPULATE_TEMPLATE = 'Unable to populate all the needed fields in {0}. Field: {1}'
         MISSING_SEND_EMAIL_METHOD = 'Missing a send email method'
-
-    def handle_exception(self, exc):
-        status_code = status.HTTP_400_BAD_REQUEST
-        if isinstance(exc, (exceptions.NotAuthenticated,
-                            exceptions.AuthenticationFailed)):
-            status_code = status.HTTP_403_FORBIDDEN
-        error_message = exc.args[0]
-
-        if hasattr(self.request.query_params, 'dict'):
-            query_params = self.request.query_params.dict()
-        else:
-            query_params = self.request.query_params
-
-        if hasattr(self.request.data, 'dict'):
-            request_data = self.request.data.dict()
-        else:
-            request_data = self.request.data
-
-        # log error
-        logger = logging.getLogger('rest-framework-simplify-exception')
-        extra_logging = {
-            'rq_query_params': query_params,
-            'rq_data': request_data,
-            'rq_method': self.request.method,
-            'rq_path': self.request.path,
-            'rs_status_code': status_code
-        }
-        logger.error(error_message, extra=extra_logging)
-
-        return Response({'errorMessage': error_message}, status=status_code)
 
     def post(self, request):
         template_name = request.data.get('templateName', None)
