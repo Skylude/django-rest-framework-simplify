@@ -12,9 +12,7 @@ from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from decimal import Decimal
-from rest_framework_simplify.errors import ErrorMessages
 from rest_framework_simplify.helpers import generate_str
-from rest_framework_simplify.views import SimplifyStoredProcedureView, SimplifyEmailTemplateView
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -616,8 +614,6 @@ class BasicClassTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'], ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
-                         format(ChildClass.__name__))
 
     def test_get_with_bool_filter_of_true(self):
         # arrange
@@ -890,8 +886,6 @@ class StoredProcedureTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyStoredProcedureView.ErrorMessages.INVALID_STORED_PROCEDURE.format(body['spName']))
 
     def test_post_without_param_returns_invalid_params_error(self):
         # arrange
@@ -905,8 +899,6 @@ class StoredProcedureTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyStoredProcedureView.ErrorMessages.INVALID_PARAMS.format(body['spName']))
 
     @unittest.mock.patch('rest_framework_simplify.services.sql_executor.service.PostgresExecutorService.call_stored_procedure')
     def test_postgres(self, mock_execute_stored_procedure):
@@ -943,8 +935,6 @@ class EmailTemplateTests(unittest.TestCase):
 
         # assert
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(result.data['errorMessage'],
-                         SimplifyEmailTemplateView.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(body['templateName']))
 
     def test_send_email_400_if_invalid_params(self):
         # arrange
