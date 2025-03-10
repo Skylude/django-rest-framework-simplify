@@ -42,11 +42,10 @@ class SimplifyView(APIView):
     def delete(self, request, pk=None, parent_resource=None, parent_pk=None):
         if parent_pk and parent_resource and self.linked_objects:
             if 'DELETE_SUB' not in self.supported_methods:
-                return self.create_response(error_message=ErrorMessages.DELETE_SUB_NOT_SUPPORTED
-                                            .format(self.model.__name__))
+                raise Exception(ErrorMessages.DELETE_SUB_NOT_SUPPORTED.format(self.model.__name__))
         else:
             if 'DELETE' not in self.supported_methods:
-                return self.create_response(error_message=ErrorMessages.DELETE_NOT_SUPPORTED.format(self.model.__name__))
+                raise Exception(ErrorMessages.DELETE_NOT_SUPPORTED.format(self.model.__name__))
 
         try:
             obj = self.get_queryset().using(self.read_db).get(pk=pk)
@@ -99,13 +98,13 @@ class SimplifyView(APIView):
         # if we have a primary key we are returning one result
         if pk:
             if not parent_resource and not parent_pk and 'GET' not in self.supported_methods:
-                return self.create_response(error_message=ErrorMessages.GET_NOT_SUPPORTED.format(self.model.__name__))
+                raise Exception(ErrorMessages.GET_NOT_SUPPORTED.format(self.model.__name__))
 
             # try to get the sub resource of a parent -- this is to ensure you can only get access to sub items if you
             # have access to their parent item
             if parent_resource and parent_pk and self.linked_objects:
                 if 'GET_SUB' not in self.supported_methods:
-                    return self.create_response(error_message=ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
+                    raise Exception(ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
                 obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
                 is_single_result = True
                 empty_is_error = True
@@ -125,7 +124,7 @@ class SimplifyView(APIView):
 
                 if len(lives_on_parent_results) > 0:
                     if 'GET_SUB' not in self.supported_methods:
-                        return self.create_response(error_message=ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
+                        raise Exception(ErrorMessages.GET_SUB_NOT_SUPPORTED.format(self.model.__name__))
 
                     linked_object = lives_on_parent_results[0]
                     child_id_field_name = linked_object['sub_resource_name']+'_id'
@@ -136,7 +135,7 @@ class SimplifyView(APIView):
                 else:
                     # check if this method has authorized sub resources
                     if 'GET_LIST_SUB' not in self.supported_methods:
-                        return self.create_response(error_message=ErrorMessages.GET_LIST_SUB_NOT_SUPPORTED.format(self.model.__name__))
+                        raise Exception(ErrorMessages.GET_LIST_SUB_NOT_SUPPORTED.format(self.model.__name__))
                     # find the resource that this request is looking for
                     obj = self.get_obj_from_linked_objects(pk, parent_resource, parent_pk)
                     if pk is not None:
@@ -146,7 +145,7 @@ class SimplifyView(APIView):
             else:
                 # trying to get ALL items in DB
                 if 'GET_LIST' not in self.supported_methods:
-                    return self.create_response(error_message=ErrorMessages.GET_LIST_NOT_SUPPORTED.format(self.model.__name__))
+                    raise Exception(ErrorMessages.GET_LIST_NOT_SUPPORTED.format(self.model.__name__))
                 obj = self.get_queryset().using(self.read_db).all()
 
         # handle includes
@@ -573,7 +572,7 @@ class SimplifyView(APIView):
     def post(self, request, parent_resource=None, parent_pk=None):
         # check we are authorized to POST
         if not parent_resource and not parent_pk and 'POST' not in self.supported_methods:
-            return self.create_response(error_message=ErrorMessages.POST_NOT_SUPPORTED.format(self.model.__name__))
+            raise Exception(ErrorMessages.POST_NOT_SUPPORTED.format(self.model.__name__))
 
         reference_fields = None
         # have to figure out the parent_source to obj mappings i.e. /resource -> 'field_name' attr on the model
@@ -597,15 +596,13 @@ class SimplifyView(APIView):
 
         # if i have an id and not an attribute linked_objects throw error
         if id and not hasattr(self, 'linked_objects'):
-            return self.create_response(error_message=ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
-                                        format(self.model.__name__))
+            raise Exception(ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.format(self.model.__name__))
         # im safe to assume i have linked_objects now lets check if we have a linking class
         if id:
             linked_classes = [linked_obj for linked_obj in self.linked_objects
                               if linked_obj['parent_resource'] == parent_resource and linked_obj['linking_cls']]
             if len(linked_classes) < 1:
-                return self.create_response(error_message=ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.
-                                            format(self.model.__name__))
+                raise Exception(ErrorMessages.POST_SUB_WITH_ID_AND_NO_LINKING_CLASS.format(self.model.__name__))
 
         self.perform_create(request.data)
 
@@ -623,7 +620,7 @@ class SimplifyView(APIView):
         # save linking table items -- todo: move this into cascade_save?
         if parent_pk and parent_resource and self.linked_objects:
             if 'POST_SUB' not in self.supported_methods:
-                return self.create_response(error_message=ErrorMessages.POST_SUB_NOT_SUPPORTED(self.model.__name__))
+                raise Exception(ErrorMessages.POST_SUB_NOT_SUPPORTED.format(self.model.__name__))
 
             snake_cased_url_tail = Mapper.camelcase_to_underscore(request.get_full_path().split('/')[-1])
             self.execute_on_linked_object(obj, self.linked_objects, parent_resource, parent_pk, snake_cased_url_tail, self.write_db)
@@ -651,7 +648,7 @@ class SimplifyView(APIView):
 
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:
-            return self.create_response(error_message=ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
+            raise Exception(ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
         self.perform_update(request.data)
         obj = self.model.parse(request.data, existing_id=pk, request=request)
         self.check_object_permissions(request, obj)
@@ -759,8 +756,7 @@ class SimplifyStoredProcedureView(APIView):
             form_cls = getattr(self.forms, form_name)
         else:
             # form hasn't been created which means we throw an error until we create the form
-            return Response({'errorMessage': self.ErrorMessages.INVALID_STORED_PROCEDURE.format(sp_name)},
-                            status=status.HTTP_400_BAD_REQUEST)
+            raise Exception(self.ErrorMessages.INVALID_STORED_PROCEDURE.format(sp_name))
 
         form = form_cls(request.data, request=request)
 
@@ -773,8 +769,7 @@ class SimplifyStoredProcedureView(APIView):
             return Response(camel_cased_results, status=status.HTTP_200_OK)
         else:
             # not valid sp params
-            return Response({'errorMessage': self.ErrorMessages.INVALID_PARAMS.format(sp_name)},
-                            status=status.HTTP_400_BAD_REQUEST)
+            raise Exception(self.ErrorMessages.INVALID_PARAMS.format(sp_name))
 
 
 class SimplifyEmailTemplateView(APIView):
@@ -800,8 +795,7 @@ class SimplifyEmailTemplateView(APIView):
             form_cls = getattr(self.templates, form_name)
         else:
             # form hasn't been created which means we throw an error until we create the form
-            return Response({'errorMessage': self.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(template_name)},
-                            status=status.HTTP_400_BAD_REQUEST)
+            raise Exception(self.ErrorMessages.INVALID_EMAIL_TEMPLATE.format(template_name))
 
         form = form_cls(request.data, request=request)
         res = form.send_email()
