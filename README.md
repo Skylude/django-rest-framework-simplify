@@ -4,6 +4,9 @@ This module was created in order to simplify [Django Rest Framework](https://git
 
 
 ## Settings
+
+### Cache
+
 If you want to cache your GET requests you will need to specify which cache you will be using in your `settings.py`, for example:
 ```python
 CACHES = {
@@ -13,6 +16,8 @@ CACHES = {
 }
 ```
 
+### Exception handler
+
 To use the [Simplify exception handler](#exceptions) you must define it in the REST_FRAMEWORK settings:
 ```python
 REST_FRAMEWORK = {
@@ -21,6 +26,15 @@ REST_FRAMEWORK = {
 ```
 The logger named `rest-framework-simplify-exception` must be configured to see the logs.
 
+#### Logging Sensitive Data
+
+The exception handler may log sensitive data with `rq_data` and `rq_query_params`. To avoid this,
+you must decorate your view method with the appropriate decorators:
+- `rest_framework_simplify.decorators.sensitive_rq_data`
+- `rest_framework_simplify.decorators.sensitive_rq_query_params`.
+
+A good rule of thumb, if you aren't comfortable with the query params or body of the endpoint you're
+working on being in logs, then you need these decorators.
 
 ## Models
 Django Rest Framework Simplify provides a `SimplifyModel` class, which subclasses Django's `DjangoModel` class. The `SimplifyModel` allows you to have additional properties on your model, for example:
