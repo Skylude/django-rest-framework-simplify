@@ -77,9 +77,10 @@ def _get_redacted_rq_data(exc: Exception, context: _Context):
         qd = context['request'].data.copy()
     if not hasattr(exc, '_sensitive_rq_data_keys'):
         return qd
-    for sk in exc._sensitive_rq_data_keys:
-        if sk in qd:
-            qd[sk] = REDACT_MESSAGE
+    sensitive_keys = [_to_canonical(k) for k in exc._sensitive_rq_data_keys]
+    for k in qd.keys():
+        if _to_canonical(k) in sensitive_keys:
+            qd[k] = REDACT_MESSAGE
     return qd
 
 
@@ -87,7 +88,14 @@ def _get_redacted_rq_query_params(exc: Exception, context: _Context):
     qd = context['request'].query_params.copy()
     if not hasattr(exc, '_sensitive_rq_query_params'):
         return qd
-    for sk in exc._sensitive_rq_query_params:
-        if sk in qd:
-            qd[sk] = REDACT_MESSAGE
+    sensitive_keys = [_to_canonical(k) for k in exc._sensitive_rq_query_params]
+    for k in qd.keys():
+        if _to_canonical(k) in sensitive_keys:
+            qd[k] = REDACT_MESSAGE
     return qd
+
+
+# _to_canonical solves the issue of snake case and camel case being supported. By lowering and
+# stripping underscores, we cover keys in any format.
+def _to_canonical(key):
+    return key.replace('_', '').lower()

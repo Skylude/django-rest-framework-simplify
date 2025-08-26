@@ -8,6 +8,8 @@ def sensitive_rq_data(*keys):
 
     These annotations are used in the rest_framework_simplify.handler.exception_handler to avoid
     including these keys in the rq_data extra on the exception log.
+
+    Note the keys are compared as all lower with underscores removed.
     """
     def decorator(func):
         @wraps(func)
@@ -28,6 +30,8 @@ def sensitive_rq_query_params(*keys):
 
     These annotations are used in the rest_framework_simplify.handler.exception_handler to avoid
     including these keys in the rq_query_params extra on the exception log.
+
+    Note the keys are compared as all lower with underscores removed.
     """
     def decorator(func):
         @wraps(func)

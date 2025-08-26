@@ -113,7 +113,7 @@ class ThrowHandlerTests(unittest.TestCase):
     def test_log_masks(self, mock_post):
         # arrange
         @sensitive_rq_data('password', 'fav_color')
-        @sensitive_rq_query_params('first_car')
+        @sensitive_rq_query_params('first_Car', 'secondcar')
         def wrapped_post(_):
             raise Exception('test exception')
 
@@ -124,14 +124,15 @@ class ThrowHandlerTests(unittest.TestCase):
             body = {
                 'username': 'gud',
                 'password': 'secret',
-                'fav_color': 'secret',
+                'favColor': 'secret',
             }
-            self.api_client.post('/throws?foo=bar&first_car=secret', body)
+            self.api_client.post('/throws?foo=bar&first_car=secret&secondCar=secret', body)
 
             # assert
             extra = mock_log.call_args[1]['extra']
             self.assertEqual(extra['rq_data']['username'], 'gud')
             self.assertNotEqual(extra['rq_data']['password'], 'secret')
-            self.assertNotEqual(extra['rq_data']['fav_color'], 'secret')
+            self.assertNotEqual(extra['rq_data']['favColor'], 'secret')
             self.assertEqual(extra['rq_query_params']['foo'], 'bar')
             self.assertNotEqual(extra['rq_query_params']['first_car'], 'secret')
+            self.assertNotEqual(extra['rq_query_params']['secondCar'], 'secret')
