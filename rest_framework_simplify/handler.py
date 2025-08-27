@@ -72,11 +72,11 @@ def _log_exception(exc: Exception, context: _Context, status_code: int, error_me
 
 
 def _get_redacted_rq_data(exc: Exception, context: _Context):
+    if not hasattr(exc, '_sensitive_rq_data_keys'):
+        return context['request'].data
     qd = context['request'].data
     if isinstance(context['request'].data, QueryDict):
         qd = context['request'].data.copy()
-    if not hasattr(exc, '_sensitive_rq_data_keys'):
-        return qd
     sensitive_keys = [_to_canonical(k) for k in exc._sensitive_rq_data_keys]
     for k in qd.keys():
         if _to_canonical(k) in sensitive_keys:
@@ -85,9 +85,9 @@ def _get_redacted_rq_data(exc: Exception, context: _Context):
 
 
 def _get_redacted_rq_query_params(exc: Exception, context: _Context):
-    qd = context['request'].query_params.copy()
     if not hasattr(exc, '_sensitive_rq_query_params'):
-        return qd
+        return context['request'].query_params
+    qd = context['request'].query_params.copy()
     sensitive_keys = [_to_canonical(k) for k in exc._sensitive_rq_query_params]
     for k in qd.keys():
         if _to_canonical(k) in sensitive_keys:
