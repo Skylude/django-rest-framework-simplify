@@ -7,6 +7,7 @@ from django.core.exceptions import PermissionDenied
 from rest_framework.test import APIClient
 from rest_framework import exceptions, status
 
+from rest_framework_simplify.decorators import sensitive_rq_data, sensitive_rq_query_params
 from rest_framework_simplify.exceptions import SimplifyAPIException
 
 
@@ -108,3 +109,30 @@ class ThrowHandlerTests(unittest.TestCase):
             self.assertEqual(extra['rs_status_code'], res.status_code)
             self.assertEqual(extra['exc_first_arg'], arg)
             self.assertEqual(extra['exc_detail'], mock_exc.detail)
+
+    def test_log_masks(self, mock_post):
+        # arrange
+        @sensitive_rq_data('password', 'fav_color')
+        @sensitive_rq_query_params('first_Car', 'secondcar')
+        def wrapped_post(_):
+            raise Exception('test exception')
+
+        mock_post.side_effect = wrapped_post
+        logger = logging.getLogger('rest-framework-simplify-exception')
+        with unittest.mock.patch.object(logger, 'exception') as mock_log:
+            # act
+            body = {
+                'username': 'gud',
+                'password': 'secret',
+                'favColor': 'secret',
+            }
+            self.api_client.post('/throws?foo=bar&first_car=secret&secondCar=secret', body)
+
+            # assert
+            extra = mock_log.call_args[1]['extra']
+            self.assertEqual(extra['rq_data']['username'], 'gud')
+            self.assertNotEqual(extra['rq_data']['password'], 'secret')
+            self.assertNotEqual(extra['rq_data']['favColor'], 'secret')
+            self.assertEqual(extra['rq_query_params']['foo'], 'bar')
+            self.assertNotEqual(extra['rq_query_params']['first_car'], 'secret')
+            self.assertNotEqual(extra['rq_query_params']['secondCar'], 'secret')
