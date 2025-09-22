@@ -39,9 +39,6 @@ class SQLExecutorService:
         }
         self.__class__ = self.engine_map.get(self.engine)
 
-    def build_sp_command(self, procedure_name, sp_params):
-        raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
-
     def call_stored_procedure(self, procedure_name, params_formatter):
         raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
 
@@ -49,9 +46,6 @@ class SQLExecutorService:
 class PostgresExecutorService(SQLExecutorService):
     class Meta:
         proxy = True
-
-    def build_sp_command(self, procedure_name, sp_params):
-        pass
 
     def get_connection(self):
         if (
@@ -111,9 +105,6 @@ class PostgresExecutorService(SQLExecutorService):
 class SQLServerExecutorService(SQLExecutorService):
     class Meta:
         proxy = True
-
-    def build_sp_command(self, procedure_name, sp_params):
-        pass
 
     def call_stored_procedure(self, procedure_name, params_formatter):
         with pymssql.connect(self.connection_data['server'], self.connection_data['username'],

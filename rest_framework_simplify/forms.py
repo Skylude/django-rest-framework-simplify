@@ -24,10 +24,6 @@ class StoredProcedureForm(forms.Form):
         # setup supported engines
         self.sp_name = connection_data.get('sp_name', None)
         
-        # Validate stored procedure name early for security
-        if self.sp_name:
-            self._validate_sp_name(self.sp_name)
-
         # make sure we are dealing with a supported engine
         engine = connection_data.get('engine', None)
         if engine not in self.supported_engines:
@@ -95,25 +91,6 @@ class StoredProcedureForm(forms.Form):
                 raise KeyError
         return params
 
-    def _validate_sp_name(self, sp_name):
-        """
-        Validate stored procedure name to prevent SQL injection.
-        Only allows alphanumeric characters, underscores, and dots.
-        """
-        if not sp_name:
-            raise ValueError(self.ErrorMessages.INVALID_SP_NAME.format('Empty procedure name'))
-        
-        # Check length (reasonable limit)
-        if len(sp_name) > 128:
-            raise ValueError(self.ErrorMessages.INVALID_SP_NAME.format('Procedure name too long'))
-        
-        # Only allow alphanumeric, underscore, and dot characters
-        if not re.match(r'^[a-zA-Z][a-zA-Z0-9_.]*$', sp_name):
-            raise ValueError(self.ErrorMessages.INVALID_SP_NAME.format(sp_name))
-        
-        return sp_name
-
-
 class EmailTemplateForm(forms.Form):
 
     class ErrorMessages:
@@ -180,7 +157,7 @@ class EmailTemplateForm(forms.Form):
             self.default_data['from'] = self.default_data['from'].replace(simplify_ml, self.cleaned_data[key])
 
         # validate (make sure there aren't any simplify MLs left in the HTML or Subject)
-        simplifyml_regex = re.compile(r'%\[(.+?)\]')
+        simplifyml_regex = re.compile('%\[(.+?)]')
         simplify_mls = simplifyml_regex.findall(html) + simplifyml_regex.findall(self.default_data['subject']) + simplifyml_regex.findall(self.default_data['from'])
         if len(simplify_mls) > 0:
             raise EmailTemplateException(self.ErrorMessages.UNABLE_TO_POPULATE_TEMPLATE.format(self.default_data['templateName'],
