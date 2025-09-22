@@ -15,6 +15,7 @@ class StoredProcedureForm(forms.Form):
     class ErrorMessages:
         UNSUPPORTED_ENGINE_ERROR = '{0} engine not supported!'
         METHOD_NOT_IMPLEMENTED = 'Method not implemented for this engine'
+        INVALID_SP_NAME = 'Invalid stored procedure name: {0}'
 
     def __init__(self, *args, **kwargs):
         connection_data = kwargs.pop('connection_data', None)
@@ -22,7 +23,7 @@ class StoredProcedureForm(forms.Form):
         super(StoredProcedureForm, self).__init__(*args, **kwargs)
         # setup supported engines
         self.sp_name = connection_data.get('sp_name', None)
-
+        
         # make sure we are dealing with a supported engine
         engine = connection_data.get('engine', None)
         if engine not in self.supported_engines:
@@ -62,12 +63,19 @@ class StoredProcedureForm(forms.Form):
             return self.postgres_format
         raise Exception(f'engine {self.engine} has no formatter defined')
 
+    def _handle_adding_field_name(self, params, field_name):
+        # todo this could cause issues with someone wanting to pass in an empty string as a param
+        if self.cleaned_data[field_name] != '':
+            params.append(self.cleaned_data[field_name])
+        else:
+            params.append(None)
+
     def sql_server_format(self, sp_params):
         params = []
         for field in sp_params:
             try:
                 field_name = field.lstrip('@')
-                params.append(self.cleaned_data[field_name])
+                self._handle_adding_field_name(params, field_name)
             except KeyError:
                 # issue with data
                 raise KeyError
@@ -77,16 +85,11 @@ class StoredProcedureForm(forms.Form):
         params = []
         for field in sp_params:
             try:
-                # todo this could cause issues with someone wanting to pass in an empty string as a param
-                if self.cleaned_data[field] != '':
-                    params.append(self.cleaned_data[field])
-                else:
-                    params.append(None)
+                self._handle_adding_field_name(params, field)
             except KeyError:
                 # issue with data
                 raise KeyError
         return params
-
 
 class EmailTemplateForm(forms.Form):
 

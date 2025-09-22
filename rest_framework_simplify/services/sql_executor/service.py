@@ -1,4 +1,5 @@
 import datetime
+import re
 import pymssql
 import psycopg2
 from django.db import connection
@@ -9,12 +10,13 @@ from rest_framework_simplify.services.sql_executor.exceptions import EngineNotSu
 
 
 class SQLExecutorService:
-
     supported_engines = ['sqlserver', 'postgres']
 
     class ErrorMessages:
         UNSUPPORTED_ENGINE_ERROR = '{0} engine not supported!'
         METHOD_NOT_IMPLEMENTED = 'Method not implemented for this engine'
+        INVALID_PROCEDURE_NAME = 'Invalid procedure name: {0}'
+        PROCEDURE_NOT_WHITELISTED = 'Procedure {0} is not in the allowed whitelist'
 
     def __init__(self, server, database, username, password, port=None, engine=None):
         # setup supported engines
@@ -37,9 +39,6 @@ class SQLExecutorService:
         }
         self.__class__ = self.engine_map.get(self.engine)
 
-    def build_sp_command(self, procedure_name, sp_params):
-        raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
-
     def call_stored_procedure(self, procedure_name, params_formatter):
         raise NotImplementedError(self.ErrorMessages.METHOD_NOT_IMPLEMENTED)
 
@@ -47,9 +46,6 @@ class SQLExecutorService:
 class PostgresExecutorService(SQLExecutorService):
     class Meta:
         proxy = True
-
-    def build_sp_command(self, procedure_name, sp_params):
-        pass
 
     def get_connection(self):
         if (
@@ -67,15 +63,17 @@ class PostgresExecutorService(SQLExecutorService):
             ), False
 
     def call_stored_procedure(self, procedure_name, params_formatter):
+        
         connection, is_managed = self.get_connection()
+        
         with connection.cursor() as cursor:
             cursor.execute('''
                 SELECT pg_catalog.pg_get_function_arguments(p.oid)
                 FROM pg_catalog.pg_proc p
-                WHERE p.proname ~ '^({0})$'
+                WHERE p.proname = %s
                     AND pg_catalog.pg_function_is_visible(p.oid)
                 LIMIT 1;
-            '''.format(procedure_name.lower()))
+            ''', (procedure_name.lower(),))
             result = cursor.fetchall()
             params_result = []
             if len(result) == 0:
@@ -91,7 +89,7 @@ class PostgresExecutorService(SQLExecutorService):
 
         if not is_managed:
             connection.close()
-        
+
         return Mapper.camelcase_to_underscore(result)
 
     @staticmethod
@@ -104,47 +102,31 @@ class PostgresExecutorService(SQLExecutorService):
         ]
 
 
-
 class SQLServerExecutorService(SQLExecutorService):
     class Meta:
         proxy = True
 
-    def build_sp_command(self, procedure_name, sp_params, params):
-        command = 'EXEC ' + procedure_name
-        if sp_params and len(sp_params) > 0:
-            for index, param in enumerate(sp_params):
-                command += ' ' + params[index] + ' = '
-                if param is None:
-                    command += 'NULL'
-                elif type(param) == str:
-                    # todo this could cause issues with someone wanting to pass in an empty string as a param
-                    if len(param) == 0:
-                        command += 'NULL'
-                    else:
-                        command += "'" + param + "'"
-                elif type(param) == int:
-                    command += str(param)
-                elif type(param) == datetime.date:
-                    command += "'" + param.strftime('%Y-%m-%d') + "'"
-                elif type(param) == datetime.datetime:
-                    command += "'" + param.strftime('%x %H:%M:%S') + "'"
-                elif type(param) == bool:
-                    command += str(int(param))
-                if index < (len(sp_params) - 1):
-                    command += ','
-        return command
-
     def call_stored_procedure(self, procedure_name, params_formatter):
         with pymssql.connect(self.connection_data['server'], self.connection_data['username'],
                              self.connection_data['password'], self.connection_data['database']) as conn:
+            
             with conn.cursor() as cursor:
                 # this may need to change to only get IN params not out params -- we will see
-                cursor.execute('SELECT PARAMETER_NAME FROM INFORMATION_SCHEMA.PARAMETERS WHERE SPECIFIC_NAME=%s AND PARAMETER_MODE=%s ORDER BY ORDINAL_POSITION', (procedure_name, 'IN'))
+                cursor.execute(
+                    'SELECT PARAMETER_NAME FROM INFORMATION_SCHEMA.PARAMETERS WHERE SPECIFIC_NAME=%s AND PARAMETER_MODE=%s ORDER BY ORDINAL_POSITION',
+                    (procedure_name, 'IN'))
                 result = cursor.fetchall()
                 params = [row[0] for row in result]
 
-                sp_command = self.build_sp_command(procedure_name, params_formatter(params), params)
-                cursor.execute(sp_command)
+                # Use parameterized query instead of string concatenation for security
+                formatted_params = params_formatter(params)
+                
+                # Use callproc method for SQL Server stored procedures
+                if formatted_params:
+                    cursor.callproc(procedure_name, formatted_params)
+                else:
+                    cursor.callproc(procedure_name)
+
                 try:
                     result = cursor.fetchall()
                 except:
