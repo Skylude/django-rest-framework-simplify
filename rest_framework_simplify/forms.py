@@ -15,6 +15,7 @@ class StoredProcedureForm(forms.Form):
     class ErrorMessages:
         UNSUPPORTED_ENGINE_ERROR = '{0} engine not supported!'
         METHOD_NOT_IMPLEMENTED = 'Method not implemented for this engine'
+        INVALID_SP_NAME = 'Invalid stored procedure name: {0}'
 
     def __init__(self, *args, **kwargs):
         connection_data = kwargs.pop('connection_data', None)
@@ -22,6 +23,10 @@ class StoredProcedureForm(forms.Form):
         super(StoredProcedureForm, self).__init__(*args, **kwargs)
         # setup supported engines
         self.sp_name = connection_data.get('sp_name', None)
+        
+        # Validate stored procedure name early for security
+        if self.sp_name:
+            self._validate_sp_name(self.sp_name)
 
         # make sure we are dealing with a supported engine
         engine = connection_data.get('engine', None)
@@ -62,12 +67,19 @@ class StoredProcedureForm(forms.Form):
             return self.postgres_format
         raise Exception(f'engine {self.engine} has no formatter defined')
 
+    def _handle_adding_field_name(self, params, field_name):
+        # todo this could cause issues with someone wanting to pass in an empty string as a param
+        if self.cleaned_data[field_name] != '':
+            params.append(self.cleaned_data[field_name])
+        else:
+            params.append(None)
+
     def sql_server_format(self, sp_params):
         params = []
         for field in sp_params:
             try:
                 field_name = field.lstrip('@')
-                params.append(self.cleaned_data[field_name])
+                self._handle_adding_field_name(params, field_name)
             except KeyError:
                 # issue with data
                 raise KeyError
@@ -77,15 +89,29 @@ class StoredProcedureForm(forms.Form):
         params = []
         for field in sp_params:
             try:
-                # todo this could cause issues with someone wanting to pass in an empty string as a param
-                if self.cleaned_data[field] != '':
-                    params.append(self.cleaned_data[field])
-                else:
-                    params.append(None)
+                self._handle_adding_field_name(params, field)
             except KeyError:
                 # issue with data
                 raise KeyError
         return params
+
+    def _validate_sp_name(self, sp_name):
+        """
+        Validate stored procedure name to prevent SQL injection.
+        Only allows alphanumeric characters, underscores, and dots.
+        """
+        if not sp_name:
+            raise ValueError(self.ErrorMessages.INVALID_SP_NAME.format('Empty procedure name'))
+        
+        # Check length (reasonable limit)
+        if len(sp_name) > 128:
+            raise ValueError(self.ErrorMessages.INVALID_SP_NAME.format('Procedure name too long'))
+        
+        # Only allow alphanumeric, underscore, and dot characters
+        if not re.match(r'^[a-zA-Z][a-zA-Z0-9_.]*$', sp_name):
+            raise ValueError(self.ErrorMessages.INVALID_SP_NAME.format(sp_name))
+        
+        return sp_name
 
 
 class EmailTemplateForm(forms.Form):
@@ -154,7 +180,7 @@ class EmailTemplateForm(forms.Form):
             self.default_data['from'] = self.default_data['from'].replace(simplify_ml, self.cleaned_data[key])
 
         # validate (make sure there aren't any simplify MLs left in the HTML or Subject)
-        simplifyml_regex = re.compile('%\[(.+?)]')
+        simplifyml_regex = re.compile(r'%\[(.+?)\]')
         simplify_mls = simplifyml_regex.findall(html) + simplifyml_regex.findall(self.default_data['subject']) + simplifyml_regex.findall(self.default_data['from'])
         if len(simplify_mls) > 0:
             raise EmailTemplateException(self.ErrorMessages.UNABLE_TO_POPULATE_TEMPLATE.format(self.default_data['templateName'],
