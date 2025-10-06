@@ -8,7 +8,6 @@ import uuid
 os.environ['DJANGO_SETTINGS_MODULE'] = 'test_proj.settings'
 django.setup()
 
-from django import forms
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
@@ -864,10 +863,8 @@ class StoredProcedureTests(unittest.TestCase):
             'var_int': 1
         }
         def clean_mock(self):
-            # Call parent clean to ensure cleaned_data is properly set up
-            cleaned_data = forms.Form.clean(self)
-            cleaned_data['var_int'] = 2
-            return cleaned_data
+            self.cleaned_data['var_int'] = 2
+            return self.cleaned_data
 
         # act
         with patch('test_app.forms.PostgresFormatForm.clean', new=clean_mock):
@@ -1066,10 +1063,8 @@ class EmailTemplateTests(unittest.TestCase):
             'signUpUrl': 'https://mywebsite.com/signup?token=LLK69FkQ12'
         }
         def mock_clean(self):
-            # Call parent clean to ensure cleaned_data is properly set up
-            cleaned_data = forms.Form.clean(self)
-            cleaned_data['to'] = 'wrong' if self.request.user.is_superuser else 'transformed@example.com'
-            return cleaned_data
+            self.cleaned_data['to'] = 'wrong' if self.request.user.is_superuser else 'transformed@example.com'
+            return self.cleaned_data
 
         # act
         with patch('test_app.email_templates.DynamicEmailTemplate.clean', new=mock_clean):
@@ -1153,4 +1148,3 @@ class FilterablePropertiesTests(unittest.TestCase):
         # assert
         self.assertEqual(result.status_code, status.HTTP_200_OK)
         self.assertEqual(len(result.data), 1)
-
