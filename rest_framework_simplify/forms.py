@@ -1,3 +1,4 @@
+import datetime
 import re
 import requests
 
@@ -66,6 +67,9 @@ class StoredProcedureForm(forms.Form):
     def _handle_adding_field_name(self, params, field_name):
         # todo this could cause issues with someone wanting to pass in an empty string as a param
         if self.cleaned_data[field_name] != '':
+            if isinstance(self.cleaned_data[field_name], datetime.date):
+                params.append(str(self.cleaned_data[field_name]))
+                return
             params.append(self.cleaned_data[field_name])
         else:
             params.append(None)
