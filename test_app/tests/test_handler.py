@@ -102,13 +102,13 @@ class ThrowHandlerTests(unittest.TestCase):
             error_message = mock_log.call_args[0][0]
             extra = mock_log.call_args[1]['extra']
             self.assertEqual(error_message, mock_exc.default_detail)
-            self.assertEqual(extra['rq_query_params']['foo'], 'bar')
-            self.assertEqual(extra['rq_data']['baz'], 'qux')
-            self.assertEqual(extra['rq_method'], 'POST')
-            self.assertEqual(extra['rq_path'], '/throws')
-            self.assertEqual(extra['rs_status_code'], res.status_code)
-            self.assertEqual(extra['exc_first_arg'], arg)
-            self.assertEqual(extra['exc_detail'], mock_exc.detail)
+            self.assertEqual(extra['query_params']['foo'], 'bar')
+            self.assertEqual(extra['request_data']['baz'], 'qux')
+            self.assertEqual(extra['method'], 'POST')
+            self.assertEqual(extra['endpoint'], '/throws')
+            self.assertEqual(extra['status_code'], res.status_code)
+            self.assertEqual(extra['exception_type'], arg)
+            self.assertEqual(extra['exception_detail'], mock_exc.detail)
 
     def test_log_masks(self, mock_post):
         # arrange
@@ -130,9 +130,9 @@ class ThrowHandlerTests(unittest.TestCase):
 
             # assert
             extra = mock_log.call_args[1]['extra']
-            self.assertEqual(extra['rq_data']['username'], 'gud')
-            self.assertNotEqual(extra['rq_data']['password'], 'secret')
-            self.assertNotEqual(extra['rq_data']['favColor'], 'secret')
-            self.assertEqual(extra['rq_query_params']['foo'], 'bar')
-            self.assertNotEqual(extra['rq_query_params']['first_car'], 'secret')
-            self.assertNotEqual(extra['rq_query_params']['secondCar'], 'secret')
+            self.assertEqual(extra['request_data']['username'], 'gud')
+            self.assertNotEqual(extra['request_data']['password'], 'secret')
+            self.assertNotEqual(extra['request_data']['favColor'], 'secret')
+            self.assertEqual(extra['query_params']['foo'], 'bar')
+            self.assertNotEqual(extra['query_params']['first_car'], 'secret')
+            self.assertNotEqual(extra['query_params']['secondCar'], 'secret')
