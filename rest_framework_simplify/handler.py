@@ -1,7 +1,6 @@
 import logging
 from typing import TypedDict
 
-from django.conf import settings
 from django.http import Http404, QueryDict
 from django.core.exceptions import PermissionDenied
 from rest_framework import exceptions, status
@@ -30,10 +29,6 @@ def exception_handler(exc: Exception, context: _Context) -> Response:
     query params fields. This data can be masked with:
     - rest_framework_simplify.decorators.sensitive_rq_data
     - rest_framework_simplify.decorators.sensitive_rq_query_params
-
-    By default, log extras use prefixed field names (rq_method, rq_path, etc.). Set the Django
-    setting DRF_SIMPLIFY_LOG_STANDARD_FIELDS = True to emit standardized names instead (method,
-    endpoint, query_params, request_data, status_code, exception_type, exception_detail).
     """
     # Historically, 400 has been the default instead of 500.
     status_code = status.HTTP_400_BAD_REQUEST
@@ -62,17 +57,6 @@ def _django_to_rest_framework(exc: Exception):
     return exc
 
 
-_LEGACY_FIELD_NAMES = {
-    'query_params': 'rq_query_params',
-    'request_data': 'rq_data',
-    'method': 'rq_method',
-    'endpoint': 'rq_path',
-    'status_code': 'rs_status_code',
-    'exception_type': 'exc_first_arg',
-    'exception_detail': 'exc_detail',
-}
-
-
 def _log_exception(exc: Exception, context: _Context, status_code: int, error_message: str):
     logger = logging.getLogger('rest-framework-simplify-exception')
 
@@ -85,9 +69,6 @@ def _log_exception(exc: Exception, context: _Context, status_code: int, error_me
         'exception_type': exc.args[0] if exc.args else None,
         'exception_detail': exc.detail if isinstance(exc, exceptions.APIException) else None,
     }
-
-    if not getattr(settings, 'DRF_SIMPLIFY_LOG_STANDARD_FIELDS', False):
-        extra = {_LEGACY_FIELD_NAMES[k]: v for k, v in extra.items()}
 
     logger.exception(error_message, extra=extra)
 

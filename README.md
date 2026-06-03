@@ -28,7 +28,7 @@ The logger named `rest-framework-simplify-exception` must be configured to see t
 
 #### Logging Sensitive Data
 
-The exception handler may log sensitive data with `rq_data` and `rq_query_params`. To avoid this,
+The exception handler may log sensitive data with `request_data` and `query_params`. To avoid this,
 you must decorate your view method with the appropriate decorators:
 - `rest_framework_simplify.decorators.sensitive_rq_data`
 - `rest_framework_simplify.decorators.sensitive_rq_query_params`.
