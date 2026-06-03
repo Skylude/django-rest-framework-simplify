@@ -4,6 +4,7 @@ import unittest.mock
 
 from django.http import Http404
 from django.core.exceptions import PermissionDenied
+from django.test import override_settings
 from rest_framework.test import APIClient
 from rest_framework import exceptions, status
 
@@ -136,3 +137,63 @@ class ThrowHandlerTests(unittest.TestCase):
             self.assertEqual(extra['rq_query_params']['foo'], 'bar')
             self.assertNotEqual(extra['rq_query_params']['first_car'], 'secret')
             self.assertNotEqual(extra['rq_query_params']['secondCar'], 'secret')
+
+
+@unittest.mock.patch('test_app.views.ThrowHandler.post')
+@override_settings(DRF_SIMPLIFY_LOG_STANDARD_FIELDS=True)
+class StandardFieldNamesTests(unittest.TestCase):
+
+    def setUp(self):
+        self.api_client = APIClient()
+
+    def test_standard_field_names(self, mock_post):
+        arg = 'custom message'
+        mock_exc = exceptions.ValidationError(arg)
+        mock_post.side_effect = mock_exc
+        logger = logging.getLogger('rest-framework-simplify-exception')
+        with unittest.mock.patch.object(logger, 'exception') as mock_log:
+            res = self.api_client.post('/throws?foo=bar', {'baz': 'qux'})
+
+            extra = mock_log.call_args[1]['extra']
+            self.assertEqual(extra['query_params']['foo'], 'bar')
+            self.assertEqual(extra['request_data']['baz'], 'qux')
+            self.assertEqual(extra['method'], 'POST')
+            self.assertEqual(extra['endpoint'], '/throws')
+            self.assertEqual(extra['status_code'], res.status_code)
+            self.assertEqual(extra['exception_type'], arg)
+            self.assertEqual(extra['exception_detail'], mock_exc.detail)
+
+    def test_legacy_keys_absent(self, mock_post):
+        mock_post.side_effect = exceptions.ValidationError('err')
+        logger = logging.getLogger('rest-framework-simplify-exception')
+        with unittest.mock.patch.object(logger, 'exception') as mock_log:
+            self.api_client.post('/throws')
+
+            extra = mock_log.call_args[1]['extra']
+            for legacy_key in ('rq_method', 'rq_path', 'rq_query_params', 'rq_data',
+                               'rs_status_code', 'exc_first_arg', 'exc_detail'):
+                self.assertNotIn(legacy_key, extra)
+
+    def test_standard_log_masks(self, mock_post):
+        @sensitive_rq_data('password', 'fav_color')
+        @sensitive_rq_query_params('first_Car', 'secondcar')
+        def wrapped_post(_):
+            raise Exception('test exception')
+
+        mock_post.side_effect = wrapped_post
+        logger = logging.getLogger('rest-framework-simplify-exception')
+        with unittest.mock.patch.object(logger, 'exception') as mock_log:
+            body = {
+                'username': 'gud',
+                'password': 'secret',
+                'favColor': 'secret',
+            }
+            self.api_client.post('/throws?foo=bar&first_car=secret&secondCar=secret', body)
+
+            extra = mock_log.call_args[1]['extra']
+            self.assertEqual(extra['request_data']['username'], 'gud')
+            self.assertNotEqual(extra['request_data']['password'], 'secret')
+            self.assertNotEqual(extra['request_data']['favColor'], 'secret')
+            self.assertEqual(extra['query_params']['foo'], 'bar')
+            self.assertNotEqual(extra['query_params']['first_car'], 'secret')
+            self.assertNotEqual(extra['query_params']['secondCar'], 'secret')
