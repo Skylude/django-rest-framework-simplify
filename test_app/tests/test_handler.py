@@ -4,7 +4,7 @@ import unittest.mock
 
 from django.http import Http404
 from django.core.exceptions import PermissionDenied
-from django.test import override_settings
+from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APIClient
 from rest_framework import exceptions, status
 
@@ -141,7 +141,7 @@ class ThrowHandlerTests(unittest.TestCase):
 
 @unittest.mock.patch('test_app.views.ThrowHandler.post')
 @override_settings(DRF_SIMPLIFY_LOG_STANDARD_FIELDS=True)
-class StandardFieldNamesTests(unittest.TestCase):
+class StandardFieldNamesTests(SimpleTestCase):
 
     def setUp(self):
         self.api_client = APIClient()

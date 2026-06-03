@@ -62,21 +62,11 @@ def _django_to_rest_framework(exc: Exception):
     return exc
 
 
-_STANDARD_FIELDS = {
-    'query_params': 'query_params',
-    'request_data': 'request_data',
-    'method': 'method',
-    'path': 'endpoint',
-    'status_code': 'status_code',
-    'exception_type': 'exception_type',
-    'exception_detail': 'exception_detail',
-}
-
-_LEGACY_FIELDS = {
+_LEGACY_FIELD_NAMES = {
     'query_params': 'rq_query_params',
     'request_data': 'rq_data',
     'method': 'rq_method',
-    'path': 'rq_path',
+    'endpoint': 'rq_path',
     'status_code': 'rs_status_code',
     'exception_type': 'exc_first_arg',
     'exception_detail': 'exc_detail',
@@ -85,18 +75,20 @@ _LEGACY_FIELDS = {
 
 def _log_exception(exc: Exception, context: _Context, status_code: int, error_message: str):
     logger = logging.getLogger('rest-framework-simplify-exception')
-    use_standard = getattr(settings, 'DRF_SIMPLIFY_LOG_STANDARD_FIELDS', False)
-    field_names = _STANDARD_FIELDS if use_standard else _LEGACY_FIELDS
 
     extra = {
-        field_names['query_params']: _get_redacted_rq_query_params(exc, context),
-        field_names['request_data']: _get_redacted_rq_data(exc, context),
-        field_names['method']: context['request'].method,
-        field_names['path']: context['request'].path,
-        field_names['status_code']: status_code,
-        field_names['exception_type']: exc.args[0] if exc.args else None,
-        field_names['exception_detail']: exc.detail if isinstance(exc, exceptions.APIException) else None,
+        'query_params': _get_redacted_rq_query_params(exc, context),
+        'request_data': _get_redacted_rq_data(exc, context),
+        'method': context['request'].method,
+        'endpoint': context['request'].path,
+        'status_code': status_code,
+        'exception_type': exc.args[0] if exc.args else None,
+        'exception_detail': exc.detail if isinstance(exc, exceptions.APIException) else None,
     }
+
+    if not getattr(settings, 'DRF_SIMPLIFY_LOG_STANDARD_FIELDS', False):
+        extra = {_LEGACY_FIELD_NAMES[k]: v for k, v in extra.items()}
+
     logger.exception(error_message, extra=extra)
 
 
