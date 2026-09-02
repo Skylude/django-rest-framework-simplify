@@ -649,9 +649,15 @@ class SimplifyView(APIView):
     def put(self, request, pk):
         if 'PUT' not in self.supported_methods:
             raise Exception(ErrorMessages.PUT_NOT_SUPPORTED.format(self.model.__name__))
+
+        try:
+            obj = self.get_queryset().using(self.read_db).get(pk=pk)
+        except self.DoesNotExist:
+            raise self.DoesNotExist(ErrorMessages.DOES_NOT_EXIST.format(self.model.__name__, pk))
+        self.check_object_permissions(request, obj)
+
         self.perform_update(request.data)
         obj = self.model.parse(request.data, existing_id=pk, request=request)
-        self.check_object_permissions(request, obj)
         obj.cascade_save()
         return self.create_response(obj, serialize=True)
 
