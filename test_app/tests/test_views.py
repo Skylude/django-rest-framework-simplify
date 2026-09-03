@@ -328,6 +328,23 @@ class GetQuerysetTests(unittest.TestCase):
         self.assertEqual(len(res.data), 0)
         self.assertNotIn(bc.id, [d['id'] for d in res.data])
 
+    @patch(
+        'test_app.views.BasicClassHandler.get_queryset',
+        Mock(return_value=BasicClass.objects.filter(active=True))
+    )
+    def test_put_override_queryset(self):
+        # arrange
+        bc = DataGenerator.set_up_basic_class(active=False, name='before')
+        url = f'/basicClass/{bc.id}'
+
+        # act
+        res = self.api_client.put(url, {'name': 'after'}, format='json')
+
+        # assert
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        bc.refresh_from_db()
+        self.assertEqual(bc.name, 'before')
+
 
 class BasicClassTests(unittest.TestCase):
     api_client = APIClient()
